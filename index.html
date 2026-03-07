@@ -19,6 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script type="text/babel">
     const { useState, useRef, useEffect, useCallback } = React;
@@ -347,95 +348,23 @@
 
       const cancelDelete = () => setPendingDelete(null);
 
-      // ── Export SVG ──────────────────────────────────────────────────────────
-      const exportSVG = () => {
-        const svgEl = canvasRef.current && canvasRef.current.querySelector("svg");
-        if (!svgEl) return;
-        const clone = svgEl.cloneNode(true);
-        // Remove inline position style so it works as standalone SVG
-        clone.removeAttribute("style");
-
-        // Word-wrap helper: split text into lines fitting maxWidth chars
-        const wrapText = (text, maxChars) => {
-          const words = text.split(" ");
-          const lines = [];
-          let line = "";
-          words.forEach(word => {
-            if ((line + (line ? " " : "") + word).length <= maxChars) {
-              line += (line ? " " : "") + word;
-            } else {
-              if (line) lines.push(line);
-              line = word;
-            }
-          });
-          if (line) lines.push(line);
-          return lines;
-        };
-
-        nodes.forEach(node => {
-          const role = roleMap[node.id];
-          const ns = "http://www.w3.org/2000/svg";
-          const g = document.createElementNS(ns, "g");
-
-          // Card background rect
-          const rect = document.createElementNS(ns, "rect");
-          rect.setAttribute("x", node.x);
-          rect.setAttribute("y", node.y);
-          rect.setAttribute("width", NODE_W);
-          rect.setAttribute("height", NODE_H);
-          rect.setAttribute("rx", "10");
-          rect.setAttribute("ry", "10");
-          rect.setAttribute("fill", "#ffffff");
-          rect.setAttribute("stroke", "#d1d5db");
-          rect.setAttribute("stroke-width", "1.5");
-          g.appendChild(rect);
-
-          let textY = node.y + 24;
-
-          // "Conclusion" label
-          if (role === "Conclusion") {
-            const label = document.createElementNS(ns, "text");
-            label.setAttribute("x", node.x + 14);
-            label.setAttribute("y", textY);
-            label.setAttribute("font-family", "monospace");
-            label.setAttribute("font-size", "8.5");
-            label.setAttribute("font-weight", "700");
-            label.setAttribute("fill", "#94a3b8");
-            label.setAttribute("letter-spacing", "0.12em");
-            label.textContent = "CONCLUSION";
-            g.appendChild(label);
-            textY += 16;
-          }
-
-          // Claim text — wrapped
-          const lines = wrapText(node.text, 26);
-          lines.forEach((line, i) => {
-            const t = document.createElementNS(ns, "text");
-            t.setAttribute("x", node.x + 14);
-            t.setAttribute("y", textY + i * 18);
-            t.setAttribute("font-family", "Georgia, serif");
-            t.setAttribute("font-size", "13");
-            t.setAttribute("fill", "#0f172a");
-            t.textContent = line;
-            g.appendChild(t);
-          });
-
-          clone.appendChild(g);
-        });
-
-        if (nodes.length > 0) {
-          const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
-          const minX = Math.min(...xs) - 40, minY = Math.min(...ys) - 40;
-          const maxX = Math.max(...xs) + NODE_W + 40, maxY = Math.max(...ys) + NODE_H + 60;
-          clone.setAttribute("viewBox", `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
-          clone.setAttribute("width", maxX - minX);
-          clone.setAttribute("height", maxY - minY);
-        }
-
-        const blob = new Blob([clone.outerHTML], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = "argument-map.svg"; a.click();
-        URL.revokeObjectURL(url);
+      // ── Export PNG ──────────────────────────────────────────────────────────
+      const [exporting, setExporting] = React.useState(false);
+      const exportPNG = () => {
+        if (!canvasRef.current || nodes.length === 0 || exporting) return;
+        setExporting(true);
+        html2canvas(canvasRef.current, {
+          backgroundColor: "#f1f5f9",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        }).then(c => {
+          const a = document.createElement("a");
+          a.href = c.toDataURL("image/png");
+          a.download = "argument-map.png";
+          a.click();
+          setExporting(false);
+        }).catch(() => setExporting(false));
       };
 
       // ── Status hint ─────────────────────────────────────────────────────────
@@ -508,11 +437,11 @@
 
               <div style={{ width: 1, height: 22, background: "#e2e8f0", marginLeft: 2 }} />
 
-              <button onClick={exportSVG} style={{
+              <button onClick={exportPNG} disabled={exporting || nodes.length === 0} style={{
                 padding: "7px 13px", borderRadius: 7, border: "1px solid #e2e8f0",
-                background: "#fff", color: "#475569", fontFamily: "'DM Sans', sans-serif",
-                fontSize: 13, fontWeight: 500, cursor: "pointer",
-              }}>↓ SVG</button>
+                background: "#fff", color: exporting ? "#94a3b8" : "#475569", fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13, fontWeight: 500, cursor: exporting ? "wait" : "pointer",
+              }}>{exporting ? "Exporting…" : "↓ PNG"}</button>
             </div>
           </div>
 
