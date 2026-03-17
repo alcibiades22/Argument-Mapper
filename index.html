@@ -28,7 +28,7 @@
 
     const NODE_W = 192;
     const NODE_H = 76;
-    const PAD = 16;
+    const PAD    = 16;
 
     const EDGE_KINDS = {
       supports: { label: "Supports",   stroke: "#1e293b", dash: "none", arrowFill: "#1e293b" },
@@ -40,7 +40,7 @@
       const hasIn  = edges.some(e => e.target === nodeId);
       if (hasOut && !hasIn)  return "Premise";
       if (hasIn  && !hasOut) return "Conclusion";
-      if (hasIn  && hasOut)  return "Subconclusion";
+      if (hasIn  &&  hasOut) return "Subconclusion";
       return null;
     }
 
@@ -77,60 +77,74 @@
     // ── SVG Edges ─────────────────────────────────────────────────────────────
 
     function EdgeSVG({ edge, nodes, selected, onClick }) {
-      const cfg = EDGE_KINDS[edge.kind] || EDGE_KINDS.supports;
-      const color    = selected ? "#f59e0b" : cfg.stroke;
-      const dash     = selected ? "none"    : cfg.dash;
+      const cfg     = EDGE_KINDS[edge.kind] || EDGE_KINDS.supports;
+      const color   = selected ? "#f59e0b" : cfg.stroke;
+      const dash    = selected ? "none"    : cfg.dash;
       const markerId = `arr-${edge.kind}${selected ? "-sel" : ""}`;
 
       if (edge.sources.length === 1) {
         const src = nodes.find(n => n.id === edge.sources[0]);
         const tgt = nodes.find(n => n.id === edge.target);
         if (!src || !tgt) return null;
-        const tc = nodeCenter(tgt), sc = nodeCenter(src);
+        const tc    = nodeCenter(tgt), sc = nodeCenter(src);
         const start = rectEdgePoint(src, tc.x, tc.y);
         const end   = rectEdgePoint(tgt, sc.x, sc.y);
+        const mx    = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
         return (
           <g onClick={onClick} style={{ cursor: "pointer" }}>
             <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={14} />
             <line x1={start.x} y1={start.y} x2={end.x} y2={end.y}
               stroke={color} strokeWidth={selected ? 2.5 : 1.8}
               strokeDasharray={dash} markerEnd={`url(#${markerId})`} />
-            {edge.kind === "objects" && (() => {
-              return (
-                <text x={start.x} y={start.y - 8} textAnchor="middle"
-                  fill={color} fontSize={10} fontFamily="'DM Mono', monospace"
-                  style={{ pointerEvents: "none", userSelect: "none" }}>
-                  objects to
-                </text>
-              );
-            })()}
+            {edge.kind === "objects" && (
+              <text x={mx} y={my - 8} textAnchor="middle" fill={color} fontSize={10}
+                fontFamily="'DM Mono', monospace" style={{ pointerEvents: "none", userSelect: "none" }}>
+                objects to
+              </text>
+            )}
           </g>
         );
       }
 
-      // Linked — open-bottom bracket + arrow from top center
+      // Linked (group) edge — bi-directional bracket
       const bbox = groupBBox(edge.sources, nodes);
       const tgt  = nodes.find(n => n.id === edge.target);
       if (!bbox || !tgt) return null;
       const { x: bx, y: by, w: bw, h: bh } = bbox;
-      const ax = bx + bw / 2, ay = by;
-      const end = rectEdgePoint(tgt, ax, ay);
-      const rx = 10;
-      const armH = bh * 0.4;
-      const bracketPath = [
+
+      const tgtCenterY  = tgt.y + NODE_H / 2;
+      const bboxCenterY = by + bh / 2;
+      const fromTop = tgtCenterY <= bboxCenterY;
+
+      const ax         = bx + bw / 2;
+      const ay_bracket = fromTop ? by : by + bh;
+      const end        = rectEdgePoint(tgt, ax, ay_bracket);
+      const MIN_STEM   = 34;
+      const ay = fromTop
+        ? Math.max(ay_bracket, end.y + MIN_STEM)
+        : Math.min(ay_bracket, end.y - MIN_STEM);
+      const rx = 10, armH = bh * 0.4;
+
+      const bracketPath = fromTop ? [
         `M ${bx} ${by + armH}`,
         `L ${bx} ${by + rx}`,
         `Q ${bx} ${by} ${bx + rx} ${by}`,
         `L ${bx + bw - rx} ${by}`,
         `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`,
         `L ${bx + bw} ${by + armH}`,
+      ].join(" ") : [
+        `M ${bx} ${by + bh - armH}`,
+        `L ${bx} ${by + bh - rx}`,
+        `Q ${bx} ${by + bh} ${bx + rx} ${by + bh}`,
+        `L ${bx + bw - rx} ${by + bh}`,
+        `Q ${bx + bw} ${by + bh} ${bx + bw} ${by + bh - rx}`,
+        `L ${bx + bw} ${by + bh - armH}`,
       ].join(" ");
 
       return (
         <g onClick={onClick} style={{ cursor: "pointer" }}>
           <path d={bracketPath} fill="none" stroke={color}
-            strokeWidth={selected ? 2.5 : 1.8}
-            strokeLinecap="round"
+            strokeWidth={selected ? 2.5 : 1.8} strokeLinecap="round"
             strokeDasharray={dash === "none" ? "" : dash} />
           <line x1={ax} y1={ay} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={14} />
           <line x1={ax} y1={ay} x2={end.x} y2={end.y}
@@ -143,18 +157,15 @@
     // ── Node Card ─────────────────────────────────────────────────────────────
 
     function NodeCard({ node, role, selected, inGroup, isTarget, onMouseDown, onClick }) {
-      const borderColor = selected ? "#f59e0b"
-        : inGroup  ? "#0ea5e9"
-        : isTarget ? "#a855f7"
-        : "#d1d5db";
+      const borderColor = selected  ? "#f59e0b"
+                        : inGroup   ? "#0ea5e9"
+                        : isTarget  ? "#a855f7"
+                        :             "#d1d5db";
 
-      const shadow = selected
-        ? "0 0 0 3px rgba(245,158,11,0.22), 0 4px 16px rgba(0,0,0,0.11)"
-        : inGroup
-        ? "0 0 0 3px rgba(14,165,233,0.18), 0 4px 14px rgba(0,0,0,0.08)"
-        : isTarget
-        ? "0 0 0 3px rgba(168,85,247,0.18), 0 4px 14px rgba(0,0,0,0.08)"
-        : "0 2px 10px rgba(0,0,0,0.055)";
+      const shadow = selected  ? "0 0 0 3px rgba(245,158,11,0.22), 0 4px 16px rgba(0,0,0,0.11)"
+                   : inGroup   ? "0 0 0 3px rgba(14,165,233,0.18), 0 4px 14px rgba(0,0,0,0.08)"
+                   : isTarget  ? "0 0 0 3px rgba(168,85,247,0.18), 0 4px 14px rgba(0,0,0,0.08)"
+                   :              "0 2px 10px rgba(0,0,0,0.055)";
 
       return (
         <div
@@ -163,13 +174,9 @@
           style={{
             position: "absolute", left: node.x, top: node.y,
             width: NODE_W, minHeight: NODE_H,
-            background: "#fff",
-            border: `1.5px solid ${borderColor}`,
-            borderRadius: 10,
-            padding: "11px 14px",
-            cursor: "grab",
-            userSelect: "none",
-            boxShadow: shadow,
+            background: "#fff", border: `1.5px solid ${borderColor}`,
+            borderRadius: 10, padding: "11px 14px",
+            cursor: "grab", userSelect: "none", boxShadow: shadow,
             transition: "box-shadow 0.12s, border-color 0.12s",
             zIndex: selected || inGroup || isTarget ? 10 : 5,
             boxSizing: "border-box",
@@ -180,9 +187,7 @@
               fontSize: 8.5, fontWeight: 700, letterSpacing: "0.14em",
               textTransform: "uppercase", color: "#94a3b8",
               fontFamily: "'DM Mono', monospace", marginBottom: 5,
-            }}>
-              Conclusion
-            </div>
+            }}>Conclusion</div>
           )}
           <div style={{
             fontSize: 13.5, color: "#0f172a", lineHeight: 1.45,
@@ -197,26 +202,35 @@
     // ── Main App ──────────────────────────────────────────────────────────────
 
     function ArgumentMapper() {
-      const [nodes, setNodes]         = useState([]);
-      const [edges, setEdges]         = useState([]);
-      const [inputText, setInputText] = useState("");
-
-      const [mode, setMode]         = useState("select");
-      const [edgeKind, setEdgeKind] = useState("supports");
+      const [nodes,         setNodes]         = useState([]);
+      const [edges,         setEdges]         = useState([]);
+      const [inputText,     setInputText]     = useState("");
+      const [mode,          setMode]          = useState("select");
+      const [edgeKind,      setEdgeKind]      = useState("supports");
       const [pendingDelete, setPendingDelete] = useState(null);
-
       const [connectSource, setConnectSource] = useState(null);
-      const [groupNodes, setGroupNodes]       = useState([]);
+      const [groupNodes,    setGroupNodes]    = useState([]);
+      const [selectedNode,  setSelectedNode]  = useState(null);
+      const [selectedEdge,  setSelectedEdge]  = useState(null);
+      const [exporting,     setExporting]     = useState(false);
+      const [selectedNodes, setSelectedNodes] = useState([]);
+      const [selBox,        setSelBox]        = useState(null);
+      const [snapToGrid,    setSnapToGrid]    = useState(false);
 
-      const [selectedNode, setSelectedNode] = useState(null);
-      const [selectedEdge, setSelectedEdge] = useState(null);
+      const dragging             = useRef(null);
+      const dragOff              = useRef({ x: 0, y: 0 });
+      const canvasRef            = useRef(null);
+      const textareaRef          = useRef(null);
+      const selBoxStart          = useRef(null);
+      const isSelBoxDragging     = useRef(false);
+      const multiDragOffsets     = useRef({});
+      const suppressNextCanvasClick = useRef(false);
+      const nodesRef             = useRef(nodes);
+      useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+      const snapToGridRef        = useRef(false);
+      useEffect(() => { snapToGridRef.current = snapToGrid; }, [snapToGrid]);
 
-      const dragging    = useRef(null);
-      const dragOff     = useRef({ x: 0, y: 0 });
-      const canvasRef   = useRef(null);
-      const textareaRef = useRef(null);
-
-      // ── Derived roles ───────────────────────────────────────────────────────
+      // Derived roles
       const roleMap = {};
       nodes.forEach(n => { roleMap[n.id] = deriveRole(n.id, edges); });
 
@@ -240,19 +254,79 @@
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return;
         dragging.current = nodeId;
-        dragOff.current = { x: e.clientX - node.x, y: e.clientY - node.y };
-      }, [mode, nodes]);
+        dragOff.current  = { x: e.clientX - node.x, y: e.clientY - node.y };
+        if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) {
+          const offsets = {};
+          nodes.filter(n => selectedNodes.includes(n.id)).forEach(n => {
+            offsets[n.id] = { x: e.clientX - n.x, y: e.clientY - n.y };
+          });
+          multiDragOffsets.current = offsets;
+        } else {
+          multiDragOffsets.current = {};
+          if (!selectedNodes.includes(nodeId)) setSelectedNodes([]);
+        }
+      }, [mode, nodes, selectedNodes]);
 
       const handleMouseMove = useCallback((e) => {
+        if (isSelBoxDragging.current && selBoxStart.current) {
+          const rect = canvasRef.current?.getBoundingClientRect();
+          if (rect) {
+            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+            const sx = selBoxStart.current.x,  sy = selBoxStart.current.y;
+            setSelBox({ x: Math.min(cx, sx), y: Math.min(cy, sy), w: Math.abs(cx - sx), h: Math.abs(cy - sy) });
+          }
+          return;
+        }
         if (!dragging.current) return;
-        setNodes(prev => prev.map(n =>
-          n.id === dragging.current
-            ? { ...n, x: e.clientX - dragOff.current.x, y: e.clientY - dragOff.current.y }
-            : n
-        ));
+        const snp = v => snapToGridRef.current ? Math.round(v / 28) * 28 : v;
+        const offsets = multiDragOffsets.current;
+        if (Object.keys(offsets).length > 0) {
+          setNodes(prev => prev.map(n =>
+            offsets[n.id]
+              ? { ...n, x: snp(e.clientX - offsets[n.id].x), y: snp(e.clientY - offsets[n.id].y) }
+              : n
+          ));
+        } else {
+          setNodes(prev => prev.map(n =>
+            n.id === dragging.current
+              ? { ...n, x: snp(e.clientX - dragOff.current.x), y: snp(e.clientY - dragOff.current.y) }
+              : n
+          ));
+        }
       }, []);
 
-      const handleMouseUp = useCallback(() => { dragging.current = null; }, []);
+      const handleMouseUp = useCallback(() => {
+        if (isSelBoxDragging.current) {
+          isSelBoxDragging.current = false;
+          selBoxStart.current = null;
+          setSelBox(prev => {
+            if (prev && (prev.w > 4 || prev.h > 4)) {
+              const matched = nodesRef.current.filter(n =>
+                n.x < prev.x + prev.w && n.x + NODE_W > prev.x &&
+                n.y < prev.y + prev.h && n.y + NODE_H > prev.y
+              );
+              if (matched.length > 0) {
+                setSelectedNodes(matched.map(n => n.id));
+                suppressNextCanvasClick.current = true;
+              }
+            }
+            return null;
+          });
+        }
+        dragging.current = null;
+        multiDragOffsets.current = {};
+      }, []);
+
+      const handleCanvasMouseDown = useCallback((e) => {
+        if (mode !== "select") return;
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        isSelBoxDragging.current = true;
+        selBoxStart.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        setSelBox({ x: selBoxStart.current.x, y: selBoxStart.current.y, w: 0, h: 0 });
+        setSelectedNode(null);
+        setSelectedEdge(null);
+      }, [mode]);
 
       // ── Node click ──────────────────────────────────────────────────────────
       const handleNodeClick = useCallback((e, nodeId) => {
@@ -267,12 +341,10 @@
           if (!connectSource) {
             setConnectSource(nodeId);
           } else if (connectSource !== nodeId) {
-            const src = nodes.find(n => n.id === connectSource);
-            const tgt = nodes.find(n => n.id === nodeId);
             const exists = edges.find(ed =>
               ed.sources.length === 1 && ed.sources[0] === connectSource && ed.target === nodeId
             );
-            if (!exists && src && tgt) {
+            if (!exists) {
               setEdges(p => [...p, { id: uid(), sources: [connectSource], target: nodeId, kind: edgeKind }]);
             }
             setConnectSource(null);
@@ -283,19 +355,16 @@
         }
 
         if (mode === "group-build") {
-          if (groupNodes.includes(nodeId)) {
-            setGroupNodes(p => p.filter(id => id !== nodeId));
-          } else {
-            setGroupNodes(p => [...p, nodeId]);
-          }
+          setGroupNodes(prev =>
+            prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]
+          );
           return;
         }
 
         if (mode === "group-target") {
           if (!groupNodes.includes(nodeId)) {
             const exists = edges.find(ed =>
-              ed.target === nodeId &&
-              ed.sources.length === groupNodes.length &&
+              ed.target === nodeId && ed.sources.length === groupNodes.length &&
               groupNodes.every(id => ed.sources.includes(id))
             );
             if (!exists) {
@@ -307,25 +376,29 @@
           return;
         }
 
+        if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) return;
+        setSelectedNodes([]);
         setSelectedNode(nodeId);
         setSelectedEdge(null);
-      }, [mode, connectSource, groupNodes, edges, edgeKind, nodes]);
+      }, [mode, connectSource, groupNodes, edges, edgeKind, selectedNodes]);
 
-      // ── Canvas click ────────────────────────────────────────────────────────
       const handleCanvasClick = () => {
-        if (mode === "connect") { setConnectSource(null); return; }
+        if (suppressNextCanvasClick.current) { suppressNextCanvasClick.current = false; return; }
+        if (mode === "connect")      { setConnectSource(null); return; }
         if (mode === "group-target") { setMode("group-build"); return; }
         setSelectedNode(null);
         setSelectedEdge(null);
+        setSelectedNodes([]);
       };
 
-      // ── Mode helpers ────────────────────────────────────────────────────────
       const setModeClean = m => {
         setMode(m);
         setConnectSource(null);
         setGroupNodes([]);
         setSelectedNode(null);
         setSelectedEdge(null);
+        setSelectedNodes([]);
+        setSelBox(null);
       };
 
       const deleteSelected = () => {
@@ -348,16 +421,69 @@
 
       const cancelDelete = () => setPendingDelete(null);
 
-      // ── Export PNG ──────────────────────────────────────────────────────────
-      const [exporting, setExporting] = React.useState(false);
+      // ── Auto-layout (topological: premises top → conclusions bottom) ──────
+      const autoLayout = useCallback(() => {
+        if (nodes.length === 0) return;
+        const GRID  = 28;
+        const H_GAP = GRID;
+        const V_GAP = GRID * 3;
+        const PAD_X = GRID * 2;
+        const PAD_Y = GRID * 2;
+        const canvas  = canvasRef.current;
+        const canvasW = canvas ? canvas.getBoundingClientRect().width : 900;
+
+        const succ      = {};
+        const predCount = {};
+        nodes.forEach(n => { succ[n.id] = []; predCount[n.id] = 0; });
+        edges.forEach(e => {
+          e.sources.forEach(srcId => {
+            if (succ[srcId] !== undefined) {
+              succ[srcId].push(e.target);
+              if (predCount[e.target] !== undefined) predCount[e.target]++;
+            }
+          });
+        });
+
+        const layer = {};
+        nodes.forEach(n => { layer[n.id] = 0; });
+        const cnt   = { ...predCount };
+        const queue = nodes.filter(n => predCount[n.id] === 0).map(n => n.id);
+        let head = 0;
+        while (head < queue.length) {
+          const id = queue[head++];
+          (succ[id] || []).forEach(tgtId => {
+            if ((layer[id] + 1) > layer[tgtId]) layer[tgtId] = layer[id] + 1;
+            cnt[tgtId]--;
+            if (cnt[tgtId] === 0) queue.push(tgtId);
+          });
+        }
+
+        const snap     = v => Math.round(v / GRID) * GRID;
+        const maxLayer = Math.max(0, ...Object.values(layer));
+        const byLayer  = Array.from({ length: maxLayer + 1 }, () => []);
+        nodes.forEach(n => byLayer[layer[n.id]].push(n.id));
+
+        const newPos = {};
+        byLayer.forEach((ids, l) => {
+          if (!ids.length) return;
+          const rowWidth = ids.length * NODE_W + (ids.length - 1) * H_GAP;
+          const startX   = Math.max(PAD_X, (canvasW - rowWidth) / 2);
+          // Flip: conclusion (highest layer) at top, premises at bottom
+          const y        = PAD_Y + (maxLayer - l) * (NODE_H + V_GAP);
+          ids.forEach((id, i) => {
+            newPos[id] = { x: snap(startX + i * (NODE_W + H_GAP)), y: snap(y) };
+          });
+        });
+
+        setNodes(prev => prev.map(n => ({ ...n, ...(newPos[n.id] || {}) })));
+      }, [nodes, edges]);
+
+      // ── Export PNG ───────────────────────────────────────────────────────────
       const exportPNG = () => {
         if (!canvasRef.current || nodes.length === 0 || exporting) return;
         setExporting(true);
         html2canvas(canvasRef.current, {
-          backgroundColor: "#f1f5f9",
-          scale: 2,
-          useCORS: true,
-          logging: false,
+          backgroundColor: "#f1f5f9", scale: 2, useCORS: true, logging: false,
         }).then(c => {
           const a = document.createElement("a");
           a.href = c.toDataURL("image/png");
@@ -367,16 +493,14 @@
         }).catch(() => setExporting(false));
       };
 
-      // ── Status hint ─────────────────────────────────────────────────────────
+      // ── Status hint ──────────────────────────────────────────────────────────
       const getHint = () => {
-        if (mode === "connect") {
-          if (!connectSource) return "Click the premise node";
-          return "Now click the conclusion node";
-        }
-        if (mode === "group-build") return `Click premises to add to group (${groupNodes.length} selected) — then click Done`;
-        if (mode === "group-target") return "Now click the conclusion node to connect the group";
-        if (mode === "delete")  return "Click any node or arrow to delete it";
-        return "Drag to reposition · click to select";
+        if (mode === "connect") return connectSource ? "Now click the conclusion node" : "Click the premise node";
+        if (mode === "group-build")  return `Click premises to add to linked group (${groupNodes.length} selected) — then Done`;
+        if (mode === "group-target") return "Click the conclusion node to connect the linked premises";
+        if (mode === "delete")       return "Click any node or arrow to delete it";
+        if (selectedNodes.length > 1) return `${selectedNodes.length} nodes selected — drag any to move all · Escape to deselect`;
+        return `Drag empty area to box-select · drag nodes to reposition${snapToGrid ? " · snap ⊞" : ""}`;
       };
 
       const modeColor = {
@@ -411,36 +535,99 @@
                 {nodes.length}n · {edges.length}e
               </span>
             </span>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <TBtn m="select"      label="Select" />
-              <TBtn m="connect"     label="Arrow" />
-              <TBtn m="group-build" label="Group" />
-              <TBtn m="delete"      label="Delete" />
 
-              {(mode === "connect" || mode === "group-build" || mode === "group-target") && (
-                <div style={{ display: "flex", borderRadius: 7, overflow: "hidden", border: "1px solid #e2e8f0", marginLeft: 4 }}>
-                  {Object.entries(EDGE_KINDS).map(([k, v]) => (
-                    <button key={k} onClick={() => setEdgeKind(k)} style={{
-                      padding: "7px 12px", border: "none",
-                      borderRight: k === "supports" ? "1px solid #e2e8f0" : "none",
-                      cursor: "pointer",
-                      background: edgeKind === k ? v.stroke : "#fff",
-                      color: edgeKind === k ? "#fff" : v.stroke,
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500,
-                      transition: "all 0.12s",
-                    }}>
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <TBtn m="select" label="Select" />
+
+              {/* ▸ Supports button */}
+              <button
+                onClick={() => { setModeClean("connect"); setEdgeKind("supports"); }}
+                style={{
+                  padding: "7px 13px", borderRadius: 7, border: "none", cursor: "pointer",
+                  background: mode === "connect" && edgeKind === "supports" ? "#0f172a" : "#f1f5f9",
+                  color:      mode === "connect" && edgeKind === "supports" ? "#fff"    : "#475569",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                  transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6,
+                }}
+              >
+                <svg width={20} height={9} style={{ flexShrink: 0 }}>
+                  <line x1={0} y1={4.5} x2={14} y2={4.5}
+                    stroke={mode === "connect" && edgeKind === "supports" ? "#fff" : "#1e293b"} strokeWidth={1.8} />
+                  <polygon points="14,1.5 20,4.5 14,7.5"
+                    fill={mode === "connect" && edgeKind === "supports" ? "#fff" : "#1e293b"} />
+                </svg>
+                Supports
+              </button>
+
+              {/* ▸ Objects to button */}
+              <button
+                onClick={() => { setModeClean("connect"); setEdgeKind("objects"); }}
+                style={{
+                  padding: "7px 13px", borderRadius: 7, border: "none", cursor: "pointer",
+                  background: mode === "connect" && edgeKind === "objects" ? "#dc2626" : "#f1f5f9",
+                  color:      mode === "connect" && edgeKind === "objects" ? "#fff"    : "#dc2626",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                  transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6,
+                }}
+              >
+                <svg width={20} height={9} style={{ flexShrink: 0 }}>
+                  <line x1={0} y1={4.5} x2={14} y2={4.5}
+                    stroke={mode === "connect" && edgeKind === "objects" ? "#fff" : "#dc2626"}
+                    strokeWidth={1.8} strokeDasharray="5,3" />
+                  <polygon points="14,1.5 20,4.5 14,7.5"
+                    fill={mode === "connect" && edgeKind === "objects" ? "#fff" : "#dc2626"} />
+                </svg>
+                Objects to
+              </button>
+
+              <TBtn m="group-build" label="Link"   />
+              <TBtn m="delete"      label="Delete" />
 
               <div style={{ width: 1, height: 22, background: "#e2e8f0", marginLeft: 2 }} />
 
+              {/* Snap-to-grid toggle */}
+              <button
+                onClick={() => setSnapToGrid(s => !s)}
+                title="Snap nodes to the dot-grid while dragging"
+                style={{
+                  padding: "7px 12px", borderRadius: 7, border: "none", cursor: "pointer",
+                  background: snapToGrid ? "#6366f1" : "#f1f5f9",
+                  color:      snapToGrid ? "#fff"    : "#475569",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                  transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
+                }}
+              >
+                <svg width={12} height={12} style={{ flexShrink: 0 }}>
+                  <circle cx={2}  cy={2}  r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
+                  <circle cx={10} cy={2}  r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
+                  <circle cx={2}  cy={10} r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
+                  <circle cx={10} cy={10} r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
+                </svg>
+                Snap
+              </button>
+
+              {/* Auto-arrange button */}
+              <button
+                onClick={autoLayout}
+                disabled={nodes.length === 0}
+                title="Auto-arrange: premises at top, conclusions at bottom"
+                style={{
+                  padding: "7px 12px", borderRadius: 7, border: "none",
+                  cursor: nodes.length === 0 ? "default" : "pointer",
+                  background: "#f1f5f9",
+                  color: nodes.length === 0 ? "#cbd5e1" : "#475569",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                  transition: "all 0.15s",
+                }}
+              >Arrange</button>
+
+              <div style={{ width: 1, height: 22, background: "#e2e8f0" }} />
+
               <button onClick={exportPNG} disabled={exporting || nodes.length === 0} style={{
                 padding: "7px 13px", borderRadius: 7, border: "1px solid #e2e8f0",
-                background: "#fff", color: exporting ? "#94a3b8" : "#475569", fontFamily: "'DM Sans', sans-serif",
-                fontSize: 13, fontWeight: 500, cursor: exporting ? "wait" : "pointer",
+                background: "#fff", color: exporting ? "#94a3b8" : "#475569",
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                cursor: exporting ? "wait" : "pointer",
               }}>{exporting ? "Exporting…" : "↓ PNG"}</button>
             </div>
           </div>
@@ -478,14 +665,14 @@
                 }}>+ Add</button>
               </div>
 
-              {/* Group builder */}
+              {/* Linked premises builder */}
               {(mode === "group-build" || mode === "group-target") && (
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>
-                    Linked Group
+                    Linked Premises
                   </div>
                   {groupNodes.length === 0
-                    ? <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>Click premises on the canvas to add them to the group.</div>
+                    ? <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>Click premises on the canvas to add them to the linked group.</div>
                     : <div>
                         {groupNodes.map(id => {
                           const n = nodes.find(x => x.id === id);
@@ -530,7 +717,7 @@
                             background: "#faf5ff", border: "1px solid #d8b4fe",
                             fontSize: 12, color: "#6b21a8",
                           }}>
-                            Click the conclusion node on the canvas to connect this group.
+                            Click the conclusion node on the canvas to connect these linked premises.
                           </div>
                         )}
                       </div>
@@ -551,7 +738,7 @@
                 ) : null;
               })()}
 
-              {/* Selected node */}
+              {/* Selected node info */}
               {selectedNode && mode === "select" && (() => {
                 const n = nodes.find(x => x.id === selectedNode);
                 if (!n) return null;
@@ -619,14 +806,15 @@
               <div
                 ref={canvasRef}
                 onClick={handleCanvasClick}
+                onMouseDown={handleCanvasMouseDown}
                 style={{
                   flex: 1, position: "relative", overflow: "hidden",
                   backgroundImage: "radial-gradient(circle, #c8d3df 1px, transparent 1px)",
                   backgroundSize: "28px 28px",
-                  cursor: mode === "delete" ? "not-allowed"
-                    : mode === "group-target" ? "crosshair"
-                    : mode !== "select" ? "crosshair"
-                    : "default",
+                  cursor: mode === "delete"       ? "not-allowed"
+                        : mode === "group-target" ? "crosshair"
+                        : mode !== "select"       ? "crosshair"
+                        :                           "default",
                 }}
               >
                 {/* SVG layer */}
@@ -649,6 +837,16 @@
                   <rect x="-9999" y="-9999" width="99999" height="99999" fill="transparent"
                     style={{ pointerEvents: "all" }}
                     onClick={e => { e.stopPropagation(); handleCanvasClick(); }} />
+
+                  {/* Rubber-band selection rect */}
+                  {selBox && selBox.w > 2 && selBox.h > 2 && (
+                    <rect
+                      x={selBox.x} y={selBox.y} width={selBox.w} height={selBox.h}
+                      fill="rgba(99,102,241,0.07)" stroke="#6366f1" strokeWidth={1.5}
+                      strokeDasharray="5,3" rx={4}
+                      style={{ pointerEvents: "none" }}
+                    />
+                  )}
 
                   {/* Group bracket preview */}
                   {(mode === "group-build" || mode === "group-target") && groupNodes.length >= 2 && (() => {
@@ -699,7 +897,7 @@
                     key={node.id}
                     node={node}
                     role={roleMap[node.id]}
-                    selected={selectedNode === node.id}
+                    selected={selectedNode === node.id || selectedNodes.includes(node.id)}
                     inGroup={groupNodes.includes(node.id)}
                     isTarget={mode === "group-target" && !groupNodes.includes(node.id)}
                     onMouseDown={e => handleNodeMouseDown(e, node.id)}
@@ -722,8 +920,7 @@
                       <div onClick={e => e.stopPropagation()} style={{
                         background: "#fff", borderRadius: 12, padding: "24px 28px",
                         boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-                        maxWidth: 340, width: "90%",
-                        fontFamily: "'DM Sans', sans-serif",
+                        maxWidth: 340, width: "90%", fontFamily: "'DM Sans', sans-serif",
                       }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
                           Delete {isNode ? "node" : "arrow"}?
