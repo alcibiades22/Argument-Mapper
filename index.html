@@ -216,6 +216,7 @@
       const [selectedNodes, setSelectedNodes] = useState([]);
       const [selBox,        setSelBox]        = useState(null);
       const [snapToGrid,    setSnapToGrid]    = useState(false);
+      const [canUndo,       setCanUndo]       = useState(false);
 
       const dragging             = useRef(null);
       const dragOff              = useRef({ x: 0, y: 0 });
@@ -229,6 +230,40 @@
       useEffect(() => { nodesRef.current = nodes; }, [nodes]);
       const snapToGridRef        = useRef(false);
       useEffect(() => { snapToGridRef.current = snapToGrid; }, [snapToGrid]);
+      const historyRef           = useRef([]);
+      const dragStartSnapshot    = useRef(null);
+      const dragMoved            = useRef(false);
+      const edgesRef             = useRef(edges);
+      useEffect(() => { edgesRef.current = edges; }, [edges]);
+
+      // ── History (undo) ───────────────────────────────────────────────────────
+      const pushHistory = useCallback((snapNodes, snapEdges) => {
+        historyRef.current = [...historyRef.current.slice(-49), { nodes: snapNodes, edges: snapEdges }];
+        setCanUndo(true);
+      }, []);
+
+      const undo = useCallback(() => {
+        if (!historyRef.current.length) return;
+        const snap = historyRef.current[historyRef.current.length - 1];
+        historyRef.current = historyRef.current.slice(0, -1);
+        setNodes(snap.nodes);
+        setEdges(snap.edges);
+        setSelectedNode(null);
+        setSelectedEdge(null);
+        setSelectedNodes([]);
+        setCanUndo(historyRef.current.length > 0);
+      }, []);
+
+      // Ctrl/Cmd+Z keyboard shortcut
+      useEffect(() => {
+        const onKey = (e) => {
+          const tag = document.activeElement?.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA") return;
+          if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, [undo]);
 
       // Derived roles
       const roleMap = {};
@@ -241,6 +276,7 @@
         const rect = canvas ? canvas.getBoundingClientRect() : { width: 900, height: 600 };
         const x = 60 + Math.random() * Math.max(rect.width - NODE_W - 80, 200);
         const y = 60 + Math.random() * Math.max(rect.height - NODE_H - 100, 200);
+        pushHistory(nodes, edges);
         setNodes(prev => [...prev, { id: uid(), text: inputText.trim(), x, y }]);
         setInputText("");
         setModeClean("select");
@@ -255,6 +291,8 @@
         if (!node) return;
         dragging.current = nodeId;
         dragOff.current  = { x: e.clientX - node.x, y: e.clientY - node.y };
+        dragStartSnapshot.current = { nodes: nodesRef.current, edges: edgesRef.current };
+        dragMoved.current = false;
         if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) {
           const offsets = {};
           nodes.filter(n => selectedNodes.includes(n.id)).forEach(n => {
@@ -278,6 +316,7 @@
           return;
         }
         if (!dragging.current) return;
+        dragMoved.current = true;
         const snp = v => snapToGridRef.current ? Math.round(v / 28) * 28 : v;
         const offsets = multiDragOffsets.current;
         if (Object.keys(offsets).length > 0) {
@@ -313,9 +352,14 @@
             return null;
           });
         }
+        if (dragging.current && dragMoved.current && dragStartSnapshot.current) {
+          pushHistory(dragStartSnapshot.current.nodes, dragStartSnapshot.current.edges);
+        }
         dragging.current = null;
+        dragStartSnapshot.current = null;
+        dragMoved.current = false;
         multiDragOffsets.current = {};
-      }, []);
+      }, [pushHistory]);
 
       const handleCanvasMouseDown = useCallback((e) => {
         if (mode !== "select") return;
@@ -345,6 +389,7 @@
               ed.sources.length === 1 && ed.sources[0] === connectSource && ed.target === nodeId
             );
             if (!exists) {
+              pushHistory(nodes, edges);
               setEdges(p => [...p, { id: uid(), sources: [connectSource], target: nodeId, kind: edgeKind }]);
             }
             setConnectSource(null);
@@ -368,6 +413,7 @@
               groupNodes.every(id => ed.sources.includes(id))
             );
             if (!exists) {
+              pushHistory(nodes, edges);
               setEdges(p => [...p, { id: uid(), sources: [...groupNodes], target: nodeId, kind: edgeKind }]);
             }
             setGroupNodes([]);
@@ -380,7 +426,7 @@
         setSelectedNodes([]);
         setSelectedNode(nodeId);
         setSelectedEdge(null);
-      }, [mode, connectSource, groupNodes, edges, edgeKind, selectedNodes]);
+      }, [mode, connectSource, groupNodes, edges, edgeKind, selectedNodes, pushHistory]);
 
       const handleCanvasClick = () => {
         if (suppressNextCanvasClick.current) { suppressNextCanvasClick.current = false; return; }
@@ -408,6 +454,7 @@
 
       const confirmDelete = () => {
         if (!pendingDelete) return;
+        pushHistory(nodes, edges);
         if (pendingDelete.type === "node") {
           setNodes(p => p.filter(n => n.id !== pendingDelete.id));
           setEdges(p => p.filter(e => !e.sources.includes(pendingDelete.id) && e.target !== pendingDelete.id));
@@ -420,63 +467,6 @@
       };
 
       const cancelDelete = () => setPendingDelete(null);
-
-      // ── Auto-layout (topological: premises top → conclusions bottom) ──────
-      const autoLayout = useCallback(() => {
-        if (nodes.length === 0) return;
-        const GRID  = 28;
-        const H_GAP = GRID;
-        const V_GAP = GRID * 3;
-        const PAD_X = GRID * 2;
-        const PAD_Y = GRID * 2;
-        const canvas  = canvasRef.current;
-        const canvasW = canvas ? canvas.getBoundingClientRect().width : 900;
-
-        const succ      = {};
-        const predCount = {};
-        nodes.forEach(n => { succ[n.id] = []; predCount[n.id] = 0; });
-        edges.forEach(e => {
-          e.sources.forEach(srcId => {
-            if (succ[srcId] !== undefined) {
-              succ[srcId].push(e.target);
-              if (predCount[e.target] !== undefined) predCount[e.target]++;
-            }
-          });
-        });
-
-        const layer = {};
-        nodes.forEach(n => { layer[n.id] = 0; });
-        const cnt   = { ...predCount };
-        const queue = nodes.filter(n => predCount[n.id] === 0).map(n => n.id);
-        let head = 0;
-        while (head < queue.length) {
-          const id = queue[head++];
-          (succ[id] || []).forEach(tgtId => {
-            if ((layer[id] + 1) > layer[tgtId]) layer[tgtId] = layer[id] + 1;
-            cnt[tgtId]--;
-            if (cnt[tgtId] === 0) queue.push(tgtId);
-          });
-        }
-
-        const snap     = v => Math.round(v / GRID) * GRID;
-        const maxLayer = Math.max(0, ...Object.values(layer));
-        const byLayer  = Array.from({ length: maxLayer + 1 }, () => []);
-        nodes.forEach(n => byLayer[layer[n.id]].push(n.id));
-
-        const newPos = {};
-        byLayer.forEach((ids, l) => {
-          if (!ids.length) return;
-          const rowWidth = ids.length * NODE_W + (ids.length - 1) * H_GAP;
-          const startX   = Math.max(PAD_X, (canvasW - rowWidth) / 2);
-          // Flip: conclusion (highest layer) at top, premises at bottom
-          const y        = PAD_Y + (maxLayer - l) * (NODE_H + V_GAP);
-          ids.forEach((id, i) => {
-            newPos[id] = { x: snap(startX + i * (NODE_W + H_GAP)), y: snap(y) };
-          });
-        });
-
-        setNodes(prev => prev.map(n => ({ ...n, ...(newPos[n.id] || {}) })));
-      }, [nodes, edges]);
 
       // ── Export PNG ───────────────────────────────────────────────────────────
       const exportPNG = () => {
@@ -585,6 +575,21 @@
 
               <div style={{ width: 1, height: 22, background: "#e2e8f0", marginLeft: 2 }} />
 
+              {/* Undo */}
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z / Cmd+Z)"
+                style={{
+                  padding: "7px 12px", borderRadius: 7, border: "none",
+                  cursor: canUndo ? "pointer" : "default",
+                  background: "#f1f5f9",
+                  color: canUndo ? "#475569" : "#cbd5e1",
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                  transition: "all 0.15s",
+                }}
+              >↩ Undo</button>
+
               {/* Snap-to-grid toggle */}
               <button
                 onClick={() => setSnapToGrid(s => !s)}
@@ -605,21 +610,6 @@
                 </svg>
                 Snap
               </button>
-
-              {/* Auto-arrange button */}
-              <button
-                onClick={autoLayout}
-                disabled={nodes.length === 0}
-                title="Auto-arrange: premises at top, conclusions at bottom"
-                style={{
-                  padding: "7px 12px", borderRadius: 7, border: "none",
-                  cursor: nodes.length === 0 ? "default" : "pointer",
-                  background: "#f1f5f9",
-                  color: nodes.length === 0 ? "#cbd5e1" : "#475569",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                  transition: "all 0.15s",
-                }}
-              >Arrange</button>
 
               <div style={{ width: 1, height: 22, background: "#e2e8f0" }} />
 
