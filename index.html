@@ -15,39 +15,40 @@
 </head>
 <body>
   <div id="root"></div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
   <script type="text/babel">
     const { useState, useRef, useEffect, useCallback } = React;
-
-    // ── Constants ─────────────────────────────────────────────────────────────
 
     const NODE_W = 192;
     const NODE_H = 76;
     const PAD    = 16;
 
     const EDGE_KINDS = {
-      supports: { label: "Supports",   stroke: "#1e293b", dash: "none", arrowFill: "#1e293b" },
-      objects:  { label: "Objects to", stroke: "#dc2626", dash: "7,4",  arrowFill: "#dc2626" },
+      supports: { label: 'Supports',   stroke: '#1e293b', dash: 'none', arrowFill: '#1e293b' },
+      objects:  { label: 'Objects to', stroke: '#dc2626', dash: '7,4',  arrowFill: '#dc2626' },
+    };
+
+    const ROLE_STYLE = {
+      Conclusion:    { bg: '#fffbeb', accent: '#f59e0b', label: 'Conclusion'    },
+      Subconclusion: { bg: '#f0f9ff', accent: '#0ea5e9', label: 'Subconclusion' },
+      Premise:       { bg: '#f8fafc', accent: '#94a3b8', label: 'Premise'       },
+      null:          { bg: '#ffffff', accent: '#e2e8f0', label: null             },
     };
 
     function deriveRole(nodeId, edges) {
-      const hasOut = edges.some(e => e.sources.includes(nodeId));
+      const hasOut = edges.some(e => e.sources && e.sources.includes(nodeId));
       const hasIn  = edges.some(e => e.target === nodeId);
-      if (hasOut && !hasIn)  return "Premise";
-      if (hasIn  && !hasOut) return "Conclusion";
-      if (hasIn  &&  hasOut) return "Subconclusion";
+      if (hasOut && !hasIn)  return 'Premise';
+      if (hasIn  && !hasOut) return 'Conclusion';
+      if (hasIn  &&  hasOut) return 'Subconclusion';
       return null;
     }
 
     let _id = 1;
     const uid = () => `n${_id++}`;
-
-    // ── Geometry ──────────────────────────────────────────────────────────────
 
     function nodeCenter(node) {
       return { x: node.x + NODE_W / 2, y: node.y + NODE_H / 2 };
@@ -67,38 +68,80 @@
     function groupBBox(nodeIds, nodes) {
       const ns = nodeIds.map(id => nodes.find(n => n.id === id)).filter(Boolean);
       if (!ns.length) return null;
-      const minX = Math.min(...ns.map(n => n.x)) - PAD;
-      const minY = Math.min(...ns.map(n => n.y)) - PAD;
-      const maxX = Math.max(...ns.map(n => n.x + NODE_W)) + PAD;
-      const maxY = Math.max(...ns.map(n => n.y + NODE_H)) + PAD;
-      return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+      return {
+        x: Math.min(...ns.map(n => n.x)) - PAD,
+        y: Math.min(...ns.map(n => n.y)) - PAD,
+        w: Math.max(...ns.map(n => n.x + NODE_W)) + PAD - (Math.min(...ns.map(n => n.x)) - PAD),
+        h: Math.max(...ns.map(n => n.y + NODE_H)) + PAD - (Math.min(...ns.map(n => n.y)) - PAD),
+      };
     }
 
-    // ── SVG Edges ─────────────────────────────────────────────────────────────
-
-    function EdgeSVG({ edge, nodes, selected, onClick }) {
-      const cfg     = EDGE_KINDS[edge.kind] || EDGE_KINDS.supports;
-      const color   = selected ? "#f59e0b" : cfg.stroke;
-      const dash    = selected ? "none"    : cfg.dash;
-      const markerId = `arr-${edge.kind}${selected ? "-sel" : ""}`;
-
+    function edgeMidpoint(edge, nodes) {
+      if (edge.targetEdge) return null;
       if (edge.sources.length === 1) {
         const src = nodes.find(n => n.id === edge.sources[0]);
         const tgt = nodes.find(n => n.id === edge.target);
         if (!src || !tgt) return null;
-        const tc    = nodeCenter(tgt), sc = nodeCenter(src);
-        const start = rectEdgePoint(src, tc.x, tc.y);
-        const end   = rectEdgePoint(tgt, sc.x, sc.y);
-        const mx    = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
+        const start = rectEdgePoint(src, nodeCenter(tgt).x, nodeCenter(tgt).y);
+        const end   = rectEdgePoint(tgt, nodeCenter(src).x, nodeCenter(src).y);
+        return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+      }
+      const bbox = groupBBox(edge.sources, nodes);
+      const tgt  = nodes.find(n => n.id === edge.target);
+      if (!bbox || !tgt) return null;
+      const ax = bbox.x + bbox.w / 2;
+      const fromTop = (tgt.y + NODE_H / 2) <= (bbox.y + bbox.h / 2);
+      const ay_bracket = fromTop ? bbox.y : bbox.y + bbox.h;
+      const end2 = rectEdgePoint(tgt, ax, ay_bracket);
+      const ay = fromTop ? Math.max(ay_bracket, end2.y + 34) : Math.min(ay_bracket, end2.y - 34);
+      return { x: (ax + end2.x) / 2, y: (ay + end2.y) / 2 };
+    }
+
+    // ── Edge SVG ──────────────────────────────────────────────────────────────
+    function EdgeSVG({ edge, nodes, edges, selected, onClick }) {
+      const cfg      = EDGE_KINDS[edge.kind] || EDGE_KINDS.supports;
+      const color    = selected ? '#f59e0b' : cfg.stroke;
+      const dash     = selected ? 'none'    : cfg.dash;
+      const markerId = `arr-${edge.kind}${selected ? '-sel' : ''}`;
+
+      // Rebuttal-to-inference
+      if (edge.targetEdge) {
+        const tgtEdge = (edges || []).find(e => e.id === edge.targetEdge);
+        const src     = nodes.find(n => n.id === edge.sources[0]);
+        if (!tgtEdge || !src) return null;
+        const mid = edgeMidpoint(tgtEdge, nodes);
+        if (!mid) return null;
+        const start    = rectEdgePoint(src, mid.x, mid.y);
+        const rebColor = selected ? '#f59e0b' : '#dc2626';
         return (
-          <g onClick={onClick} style={{ cursor: "pointer" }}>
+          <g onClick={onClick} style={{ cursor: 'pointer' }}>
+            <line x1={start.x} y1={start.y} x2={mid.x} y2={mid.y} stroke="transparent" strokeWidth={14} />
+            <line x1={start.x} y1={start.y} x2={mid.x} y2={mid.y}
+              stroke={rebColor} strokeWidth={selected ? 2.5 : 1.8}
+              strokeDasharray="7,4" markerEnd={`url(#arr-rebukes${selected ? '-sel' : ''})`} />
+            <circle cx={mid.x} cy={mid.y} r={4.5} fill="#fff" stroke={rebColor} strokeWidth={1.5}
+              style={{ pointerEvents: 'none' }} />
+          </g>
+        );
+      }
+
+      // Single-source edge
+      if (edge.sources.length === 1) {
+        const src = nodes.find(n => n.id === edge.sources[0]);
+        const tgt = nodes.find(n => n.id === edge.target);
+        if (!src || !tgt) return null;
+        const start = rectEdgePoint(src, nodeCenter(tgt).x, nodeCenter(tgt).y);
+        const end   = rectEdgePoint(tgt, nodeCenter(src).x, nodeCenter(src).y);
+        const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
+        return (
+          <g onClick={onClick} style={{ cursor: 'pointer' }}>
             <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={14} />
             <line x1={start.x} y1={start.y} x2={end.x} y2={end.y}
               stroke={color} strokeWidth={selected ? 2.5 : 1.8}
               strokeDasharray={dash} markerEnd={`url(#${markerId})`} />
-            {edge.kind === "objects" && (
+            {edge.kind === 'objects' && !edge.targetEdge && (
               <text x={mx} y={my - 8} textAnchor="middle" fill={color} fontSize={10}
-                fontFamily="'DM Mono', monospace" style={{ pointerEvents: "none", userSelect: "none" }}>
+                fontFamily="'DM Mono', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>
                 objects to
               </text>
             )}
@@ -106,46 +149,31 @@
         );
       }
 
-      // Linked (group) edge — bi-directional bracket
+      // Linked (group) edge
       const bbox = groupBBox(edge.sources, nodes);
       const tgt  = nodes.find(n => n.id === edge.target);
       if (!bbox || !tgt) return null;
       const { x: bx, y: by, w: bw, h: bh } = bbox;
-
-      const tgtCenterY  = tgt.y + NODE_H / 2;
-      const bboxCenterY = by + bh / 2;
-      const fromTop = tgtCenterY <= bboxCenterY;
-
+      const fromTop    = (tgt.y + NODE_H / 2) <= (by + bh / 2);
       const ax         = bx + bw / 2;
       const ay_bracket = fromTop ? by : by + bh;
       const end        = rectEdgePoint(tgt, ax, ay_bracket);
-      const MIN_STEM   = 34;
-      const ay = fromTop
-        ? Math.max(ay_bracket, end.y + MIN_STEM)
-        : Math.min(ay_bracket, end.y - MIN_STEM);
+      const ay         = fromTop ? Math.max(ay_bracket, end.y + 34) : Math.min(ay_bracket, end.y - 34);
       const rx = 10, armH = bh * 0.4;
-
       const bracketPath = fromTop ? [
-        `M ${bx} ${by + armH}`,
-        `L ${bx} ${by + rx}`,
-        `Q ${bx} ${by} ${bx + rx} ${by}`,
-        `L ${bx + bw - rx} ${by}`,
-        `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`,
-        `L ${bx + bw} ${by + armH}`,
-      ].join(" ") : [
-        `M ${bx} ${by + bh - armH}`,
-        `L ${bx} ${by + bh - rx}`,
-        `Q ${bx} ${by + bh} ${bx + rx} ${by + bh}`,
-        `L ${bx + bw - rx} ${by + bh}`,
-        `Q ${bx + bw} ${by + bh} ${bx + bw} ${by + bh - rx}`,
-        `L ${bx + bw} ${by + bh - armH}`,
-      ].join(" ");
-
+        `M ${bx} ${by + armH}`, `L ${bx} ${by + rx}`,
+        `Q ${bx} ${by} ${bx + rx} ${by}`, `L ${bx + bw - rx} ${by}`,
+        `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`, `L ${bx + bw} ${by + armH}`,
+      ].join(' ') : [
+        `M ${bx} ${by + bh - armH}`, `L ${bx} ${by + bh - rx}`,
+        `Q ${bx} ${by + bh} ${bx + rx} ${by + bh}`, `L ${bx + bw - rx} ${by + bh}`,
+        `Q ${bx + bw} ${by + bh} ${bx + bw} ${by + bh - rx}`, `L ${bx + bw} ${by + bh - armH}`,
+      ].join(' ');
       return (
-        <g onClick={onClick} style={{ cursor: "pointer" }}>
+        <g onClick={onClick} style={{ cursor: 'pointer' }}>
           <path d={bracketPath} fill="none" stroke={color}
             strokeWidth={selected ? 2.5 : 1.8} strokeLinecap="round"
-            strokeDasharray={dash === "none" ? "" : dash} />
+            strokeDasharray={dash === 'none' ? '' : dash} />
           <line x1={ax} y1={ay} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={14} />
           <line x1={ax} y1={ay} x2={end.x} y2={end.y}
             stroke={color} strokeWidth={selected ? 2.5 : 1.8}
@@ -155,58 +183,48 @@
     }
 
     // ── Node Card ─────────────────────────────────────────────────────────────
-
     function NodeCard({ node, role, selected, inGroup, isTarget, onMouseDown, onClick }) {
-      const borderColor = selected  ? "#f59e0b"
-                        : inGroup   ? "#0ea5e9"
-                        : isTarget  ? "#a855f7"
-                        :             "#d1d5db";
-
-      const shadow = selected  ? "0 0 0 3px rgba(245,158,11,0.22), 0 4px 16px rgba(0,0,0,0.11)"
-                   : inGroup   ? "0 0 0 3px rgba(14,165,233,0.18), 0 4px 14px rgba(0,0,0,0.08)"
-                   : isTarget  ? "0 0 0 3px rgba(168,85,247,0.18), 0 4px 14px rgba(0,0,0,0.08)"
-                   :              "0 2px 10px rgba(0,0,0,0.055)";
-
+      const rs          = ROLE_STYLE[role] || ROLE_STYLE[null];
+      const accentColor = selected ? '#f59e0b' : inGroup ? '#0ea5e9' : isTarget ? '#a855f7' : rs.accent;
+      const shadow      = selected  ? '0 0 0 3px rgba(245,158,11,0.22), 0 4px 16px rgba(0,0,0,0.11)'
+                        : inGroup   ? '0 0 0 3px rgba(14,165,233,0.18), 0 4px 14px rgba(0,0,0,0.08)'
+                        : isTarget  ? '0 0 0 3px rgba(168,85,247,0.18), 0 4px 14px rgba(0,0,0,0.08)'
+                        :              '0 2px 10px rgba(0,0,0,0.055)';
       return (
-        <div
-          onMouseDown={onMouseDown}
-          onClick={onClick}
-          style={{
-            position: "absolute", left: node.x, top: node.y,
-            width: NODE_W, minHeight: NODE_H,
-            background: "#fff", border: `1.5px solid ${borderColor}`,
-            borderRadius: 10, padding: "11px 14px",
-            cursor: "grab", userSelect: "none", boxShadow: shadow,
-            transition: "box-shadow 0.12s, border-color 0.12s",
-            zIndex: selected || inGroup || isTarget ? 10 : 5,
-            boxSizing: "border-box",
-          }}
-        >
-          {role === "Conclusion" && (
+        <div onMouseDown={onMouseDown} onClick={onClick} style={{
+          position: 'absolute', left: node.x, top: node.y,
+          width: NODE_W, minHeight: NODE_H,
+          background: rs.bg,
+          border: `1.5px solid ${accentColor}`,
+          borderTop: `3px solid ${accentColor}`,
+          borderRadius: 10, padding: '10px 14px 11px',
+          cursor: 'grab', userSelect: 'none', boxShadow: shadow,
+          transition: 'box-shadow 0.12s, border-color 0.12s',
+          zIndex: selected || inGroup || isTarget ? 10 : 5,
+          boxSizing: 'border-box',
+        }}>
+          {rs.label && (
             <div style={{
-              fontSize: 8.5, fontWeight: 700, letterSpacing: "0.14em",
-              textTransform: "uppercase", color: "#94a3b8",
+              fontSize: 8.5, fontWeight: 700, letterSpacing: '0.14em',
+              textTransform: 'uppercase', color: accentColor,
               fontFamily: "'DM Mono', monospace", marginBottom: 5,
-            }}>Conclusion</div>
+            }}>{rs.label}</div>
           )}
           <div style={{
-            fontSize: 13.5, color: "#0f172a", lineHeight: 1.45,
+            fontSize: 13.5, color: '#0f172a', lineHeight: 1.45,
             fontFamily: "'Crimson Pro', Georgia, serif",
-          }}>
-            {node.text}
-          </div>
+          }}>{node.text}</div>
         </div>
       );
     }
 
     // ── Main App ──────────────────────────────────────────────────────────────
-
     function ArgumentMapper() {
       const [nodes,         setNodes]         = useState([]);
       const [edges,         setEdges]         = useState([]);
-      const [inputText,     setInputText]     = useState("");
-      const [mode,          setMode]          = useState("select");
-      const [edgeKind,      setEdgeKind]      = useState("supports");
+      const [inputText,     setInputText]     = useState('');
+      const [mode,          setMode]          = useState('select');
+      const [edgeKind,      setEdgeKind]      = useState('supports');
       const [pendingDelete, setPendingDelete] = useState(null);
       const [connectSource, setConnectSource] = useState(null);
       const [groupNodes,    setGroupNodes]    = useState([]);
@@ -217,28 +235,32 @@
       const [selBox,        setSelBox]        = useState(null);
       const [snapToGrid,    setSnapToGrid]    = useState(false);
       const [canUndo,       setCanUndo]       = useState(false);
+      const [zoom,          setZoom]          = useState(1);
 
-      const dragging             = useRef(null);
-      const dragOff              = useRef({ x: 0, y: 0 });
-      const canvasRef            = useRef(null);
-      const textareaRef          = useRef(null);
-      const selBoxStart          = useRef(null);
-      const isSelBoxDragging     = useRef(false);
-      const multiDragOffsets     = useRef({});
+      const dragging                = useRef(null);
+      const dragOff                 = useRef({ x: 0, y: 0 });
+      const canvasRef               = useRef(null);
+      const textareaRef             = useRef(null);
+      const selBoxStart             = useRef(null);
+      const isSelBoxDragging        = useRef(false);
+      const multiDragOffsets        = useRef({});
       const suppressNextCanvasClick = useRef(false);
-      const nodesRef             = useRef(nodes);
-      useEffect(() => { nodesRef.current = nodes; }, [nodes]);
-      const snapToGridRef        = useRef(false);
-      useEffect(() => { snapToGridRef.current = snapToGrid; }, [snapToGrid]);
-      const historyRef           = useRef([]);
-      const dragStartSnapshot    = useRef(null);
-      const dragMoved            = useRef(false);
-      const edgesRef             = useRef(edges);
-      useEffect(() => { edgesRef.current = edges; }, [edges]);
+      const nodesRef                = useRef(nodes);
+      const snapToGridRef           = useRef(false);
+      const historyRef              = useRef([]);
+      const dragStartSnapshot       = useRef(null);
+      const dragMoved               = useRef(false);
+      const edgesRef                = useRef(edges);
+      const zoomRef                 = useRef(1);
 
-      // ── History (undo) ───────────────────────────────────────────────────────
-      const pushHistory = useCallback((snapNodes, snapEdges) => {
-        historyRef.current = [...historyRef.current.slice(-49), { nodes: snapNodes, edges: snapEdges }];
+      useEffect(() => { nodesRef.current = nodes; },     [nodes]);
+      useEffect(() => { edgesRef.current = edges; },     [edges]);
+      useEffect(() => { snapToGridRef.current = snapToGrid; }, [snapToGrid]);
+      useEffect(() => { zoomRef.current = zoom; },       [zoom]);
+
+      // ── History ──────────────────────────────────────────────────────────────
+      const pushHistory = useCallback((sn, se) => {
+        historyRef.current = [...historyRef.current.slice(-49), { nodes: sn, edges: se }];
         setCanUndo(true);
       }, []);
 
@@ -246,59 +268,53 @@
         if (!historyRef.current.length) return;
         const snap = historyRef.current[historyRef.current.length - 1];
         historyRef.current = historyRef.current.slice(0, -1);
-        setNodes(snap.nodes);
-        setEdges(snap.edges);
-        setSelectedNode(null);
-        setSelectedEdge(null);
-        setSelectedNodes([]);
+        setNodes(snap.nodes); setEdges(snap.edges);
+        setSelectedNode(null); setSelectedEdge(null); setSelectedNodes([]);
         setCanUndo(historyRef.current.length > 0);
       }, []);
 
-      // Ctrl/Cmd+Z keyboard shortcut
       useEffect(() => {
-        const onKey = (e) => {
-          const tag = document.activeElement?.tagName;
-          if (tag === "INPUT" || tag === "TEXTAREA") return;
-          if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); undo(); }
+        const onKey = e => {
+          if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+          if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
         };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
       }, [undo]);
 
-      // Derived roles
       const roleMap = {};
       nodes.forEach(n => { roleMap[n.id] = deriveRole(n.id, edges); });
 
-      // ── Add Node ────────────────────────────────────────────────────────────
+      // ── Add node ─────────────────────────────────────────────────────────────
       const addNode = () => {
         if (!inputText.trim()) return;
-        const canvas = canvasRef.current;
-        const rect = canvas ? canvas.getBoundingClientRect() : { width: 900, height: 600 };
-        const x = 60 + Math.random() * Math.max(rect.width - NODE_W - 80, 200);
+        const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : { width: 900, height: 600 };
+        const x = 60 + Math.random() * Math.max(rect.width  - NODE_W - 80, 200);
         const y = 60 + Math.random() * Math.max(rect.height - NODE_H - 100, 200);
         pushHistory(nodes, edges);
         setNodes(prev => [...prev, { id: uid(), text: inputText.trim(), x, y }]);
-        setInputText("");
-        setModeClean("select");
+        setInputText('');
+        setModeClean('select');
         if (textareaRef.current) textareaRef.current.focus();
       };
 
-      // ── Drag ────────────────────────────────────────────────────────────────
+      // ── Drag ─────────────────────────────────────────────────────────────────
       const handleNodeMouseDown = useCallback((e, nodeId) => {
-        if (mode !== "select") return;
+        if (mode !== 'select') return;
         e.stopPropagation();
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return;
-        dragging.current = nodeId;
-        dragOff.current  = { x: e.clientX - node.x, y: e.clientY - node.y };
+        const z = zoomRef.current;
+        dragging.current      = nodeId;
+        dragOff.current       = { x: e.clientX / z - node.x, y: e.clientY / z - node.y };
         dragStartSnapshot.current = { nodes: nodesRef.current, edges: edgesRef.current };
-        dragMoved.current = false;
+        dragMoved.current     = false;
         if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) {
-          const offsets = {};
+          const offs = {};
           nodes.filter(n => selectedNodes.includes(n.id)).forEach(n => {
-            offsets[n.id] = { x: e.clientX - n.x, y: e.clientY - n.y };
+            offs[n.id] = { x: e.clientX / z - n.x, y: e.clientY / z - n.y };
           });
-          multiDragOffsets.current = offsets;
+          multiDragOffsets.current = offs;
         } else {
           multiDragOffsets.current = {};
           if (!selectedNodes.includes(nodeId)) setSelectedNodes([]);
@@ -306,11 +322,12 @@
       }, [mode, nodes, selectedNodes]);
 
       const handleMouseMove = useCallback((e) => {
+        const z = zoomRef.current;
         if (isSelBoxDragging.current && selBoxStart.current) {
           const rect = canvasRef.current?.getBoundingClientRect();
           if (rect) {
-            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-            const sx = selBoxStart.current.x,  sy = selBoxStart.current.y;
+            const cx = (e.clientX - rect.left) / z, cy = (e.clientY - rect.top) / z;
+            const sx = selBoxStart.current.x, sy = selBoxStart.current.y;
             setSelBox({ x: Math.min(cx, sx), y: Math.min(cy, sy), w: Math.abs(cx - sx), h: Math.abs(cy - sy) });
           }
           return;
@@ -318,19 +335,13 @@
         if (!dragging.current) return;
         dragMoved.current = true;
         const snp = v => snapToGridRef.current ? Math.round(v / 28) * 28 : v;
-        const offsets = multiDragOffsets.current;
-        if (Object.keys(offsets).length > 0) {
-          setNodes(prev => prev.map(n =>
-            offsets[n.id]
-              ? { ...n, x: snp(e.clientX - offsets[n.id].x), y: snp(e.clientY - offsets[n.id].y) }
-              : n
-          ));
+        const offs = multiDragOffsets.current;
+        if (Object.keys(offs).length > 0) {
+          setNodes(prev => prev.map(n => offs[n.id]
+            ? { ...n, x: snp(e.clientX / z - offs[n.id].x), y: snp(e.clientY / z - offs[n.id].y) } : n));
         } else {
-          setNodes(prev => prev.map(n =>
-            n.id === dragging.current
-              ? { ...n, x: snp(e.clientX - dragOff.current.x), y: snp(e.clientY - dragOff.current.y) }
-              : n
-          ));
+          setNodes(prev => prev.map(n => n.id === dragging.current
+            ? { ...n, x: snp(e.clientX / z - dragOff.current.x), y: snp(e.clientY / z - dragOff.current.y) } : n));
         }
       }, []);
 
@@ -342,8 +353,7 @@
             if (prev && (prev.w > 4 || prev.h > 4)) {
               const matched = nodesRef.current.filter(n =>
                 n.x < prev.x + prev.w && n.x + NODE_W > prev.x &&
-                n.y < prev.y + prev.h && n.y + NODE_H > prev.y
-              );
+                n.y < prev.y + prev.h && n.y + NODE_H > prev.y);
               if (matched.length > 0) {
                 setSelectedNodes(matched.map(n => n.id));
                 suppressNextCanvasClick.current = true;
@@ -355,112 +365,76 @@
         if (dragging.current && dragMoved.current && dragStartSnapshot.current) {
           pushHistory(dragStartSnapshot.current.nodes, dragStartSnapshot.current.edges);
         }
-        dragging.current = null;
-        dragStartSnapshot.current = null;
-        dragMoved.current = false;
-        multiDragOffsets.current = {};
+        dragging.current = null; dragStartSnapshot.current = null;
+        dragMoved.current = false; multiDragOffsets.current = {};
       }, [pushHistory]);
 
       const handleCanvasMouseDown = useCallback((e) => {
-        if (mode !== "select") return;
+        if (mode !== 'select') return;
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) return;
+        const z = zoomRef.current;
         isSelBoxDragging.current = true;
-        selBoxStart.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        selBoxStart.current = { x: (e.clientX - rect.left) / z, y: (e.clientY - rect.top) / z };
         setSelBox({ x: selBoxStart.current.x, y: selBoxStart.current.y, w: 0, h: 0 });
-        setSelectedNode(null);
-        setSelectedEdge(null);
+        setSelectedNode(null); setSelectedEdge(null);
       }, [mode]);
 
-      // ── Node click ──────────────────────────────────────────────────────────
+      // ── Node click ───────────────────────────────────────────────────────────
       const handleNodeClick = useCallback((e, nodeId) => {
         e.stopPropagation();
-
-        if (mode === "delete") {
-          setPendingDelete({ type: "node", id: nodeId });
-          return;
-        }
-
-        if (mode === "connect") {
-          if (!connectSource) {
-            setConnectSource(nodeId);
-          } else if (connectSource !== nodeId) {
-            const exists = edges.find(ed =>
-              ed.sources.length === 1 && ed.sources[0] === connectSource && ed.target === nodeId
-            );
-            if (!exists) {
-              pushHistory(nodes, edges);
-              setEdges(p => [...p, { id: uid(), sources: [connectSource], target: nodeId, kind: edgeKind }]);
-            }
+        if (mode === 'delete') { setPendingDelete({ type: 'node', id: nodeId }); return; }
+        if (mode === 'connect') {
+          if (!connectSource) { setConnectSource(nodeId); }
+          else if (connectSource !== nodeId) {
+            const exists = edges.find(ed => ed.sources.length === 1 && ed.sources[0] === connectSource && ed.target === nodeId);
+            if (!exists) { pushHistory(nodes, edges); setEdges(p => [...p, { id: uid(), sources: [connectSource], target: nodeId, kind: edgeKind }]); }
             setConnectSource(null);
-          } else {
-            setConnectSource(null);
-          }
+          } else { setConnectSource(null); }
           return;
         }
-
-        if (mode === "group-build") {
-          setGroupNodes(prev =>
-            prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]
-          );
+        if (mode === 'group-build') {
+          setGroupNodes(prev => prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]);
           return;
         }
-
-        if (mode === "group-target") {
+        if (mode === 'group-target') {
           if (!groupNodes.includes(nodeId)) {
-            const exists = edges.find(ed =>
-              ed.target === nodeId && ed.sources.length === groupNodes.length &&
-              groupNodes.every(id => ed.sources.includes(id))
-            );
-            if (!exists) {
-              pushHistory(nodes, edges);
-              setEdges(p => [...p, { id: uid(), sources: [...groupNodes], target: nodeId, kind: edgeKind }]);
-            }
-            setGroupNodes([]);
-            setMode("group-build");
+            const exists = edges.find(ed => ed.target === nodeId && ed.sources.length === groupNodes.length && groupNodes.every(id => ed.sources.includes(id)));
+            if (!exists) { pushHistory(nodes, edges); setEdges(p => [...p, { id: uid(), sources: [...groupNodes], target: nodeId, kind: edgeKind }]); }
+            setGroupNodes([]); setMode('group-build');
           }
           return;
         }
-
         if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) return;
-        setSelectedNodes([]);
-        setSelectedNode(nodeId);
-        setSelectedEdge(null);
+        setSelectedNodes([]); setSelectedNode(nodeId); setSelectedEdge(null);
       }, [mode, connectSource, groupNodes, edges, edgeKind, selectedNodes, pushHistory]);
 
       const handleCanvasClick = () => {
         if (suppressNextCanvasClick.current) { suppressNextCanvasClick.current = false; return; }
-        if (mode === "connect")      { setConnectSource(null); return; }
-        if (mode === "group-target") { setMode("group-build"); return; }
-        setSelectedNode(null);
-        setSelectedEdge(null);
-        setSelectedNodes([]);
+        if (mode === 'connect')      { setConnectSource(null); return; }
+        if (mode === 'group-target') { setMode('group-build'); return; }
+        setSelectedNode(null); setSelectedEdge(null); setSelectedNodes([]);
       };
 
       const setModeClean = m => {
-        setMode(m);
-        setConnectSource(null);
-        setGroupNodes([]);
-        setSelectedNode(null);
-        setSelectedEdge(null);
-        setSelectedNodes([]);
-        setSelBox(null);
+        setMode(m); setConnectSource(null); setGroupNodes([]);
+        setSelectedNode(null); setSelectedEdge(null); setSelectedNodes([]); setSelBox(null);
       };
 
       const deleteSelected = () => {
-        if (selectedNode) setPendingDelete({ type: "node", id: selectedNode });
-        else if (selectedEdge) setPendingDelete({ type: "edge", id: selectedEdge });
+        if (selectedNode)   setPendingDelete({ type: 'node', id: selectedNode });
+        else if (selectedEdge) setPendingDelete({ type: 'edge', id: selectedEdge });
       };
 
       const confirmDelete = () => {
         if (!pendingDelete) return;
         pushHistory(nodes, edges);
-        if (pendingDelete.type === "node") {
+        if (pendingDelete.type === 'node') {
           setNodes(p => p.filter(n => n.id !== pendingDelete.id));
-          setEdges(p => p.filter(e => !e.sources.includes(pendingDelete.id) && e.target !== pendingDelete.id));
+          setEdges(p => p.filter(e => !(e.sources || []).includes(pendingDelete.id) && e.target !== pendingDelete.id));
           if (selectedNode === pendingDelete.id) setSelectedNode(null);
         } else {
-          setEdges(p => p.filter(e => e.id !== pendingDelete.id));
+          setEdges(p => p.filter(e => e.id !== pendingDelete.id && e.targetEdge !== pendingDelete.id));
           if (selectedEdge === pendingDelete.id) setSelectedEdge(null);
         }
         setPendingDelete(null);
@@ -468,246 +442,165 @@
 
       const cancelDelete = () => setPendingDelete(null);
 
-      // ── Export PNG ───────────────────────────────────────────────────────────
+      // ── Export ───────────────────────────────────────────────────────────────
       const exportPNG = () => {
         if (!canvasRef.current || nodes.length === 0 || exporting) return;
         setExporting(true);
-        html2canvas(canvasRef.current, {
-          backgroundColor: "#f1f5f9", scale: 2, useCORS: true, logging: false,
-        }).then(c => {
-          const a = document.createElement("a");
-          a.href = c.toDataURL("image/png");
-          a.download = "argument-map.png";
-          a.click();
-          setExporting(false);
-        }).catch(() => setExporting(false));
+        html2canvas(canvasRef.current, { backgroundColor: '#f1f5f9', scale: 2, useCORS: true, logging: false })
+          .then(c => { const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'argument-map.png'; a.click(); setExporting(false); })
+          .catch(() => setExporting(false));
       };
 
-      // ── Status hint ──────────────────────────────────────────────────────────
+      // ── Hints / colors ───────────────────────────────────────────────────────
       const getHint = () => {
-        if (mode === "connect") return connectSource ? "Now click the conclusion node" : "Click the premise node";
-        if (mode === "group-build")  return `Click premises to add to linked group (${groupNodes.length} selected) — then Done`;
-        if (mode === "group-target") return "Click the conclusion node to connect the linked premises";
-        if (mode === "delete")       return "Click any node or arrow to delete it";
-        if (selectedNodes.length > 1) return `${selectedNodes.length} nodes selected — drag any to move all · Escape to deselect`;
-        return `Drag empty area to box-select · drag nodes to reposition${snapToGrid ? " · snap ⊞" : ""}`;
+        if (mode === 'connect' && edgeKind === 'objects') return connectSource ? 'Now click a node or an arrow to object to' : 'Click the objecting claim';
+        if (mode === 'connect')      return connectSource ? 'Now click the conclusion node' : 'Click the premise node';
+        if (mode === 'group-build')  return `Click premises to group (${groupNodes.length} selected) — then Done`;
+        if (mode === 'group-target') return 'Click the conclusion node to connect the linked premises';
+        if (mode === 'delete')       return 'Click any node or arrow to delete it';
+        if (selectedNodes.length > 1) return `${selectedNodes.length} nodes selected — drag any to move all`;
+        return `Drag empty area to box-select · drag nodes to reposition${snapToGrid ? ' · snap on' : ''}`;
       };
 
-      const modeColor = {
-        select: "#22c55e", connect: "#0ea5e9",
-        "group-build": "#f59e0b", "group-target": "#a855f7", delete: "#dc2626",
-      };
+      const modeColor = { select: '#22c55e', connect: '#0ea5e9', 'group-build': '#f59e0b', 'group-target': '#a855f7', delete: '#dc2626' };
 
       const TBtn = ({ m, label }) => (
         <button onClick={() => setModeClean(m)} style={{
-          padding: "7px 15px", borderRadius: 7, border: "none", cursor: "pointer",
-          background: mode === m ? "#0f172a" : "#f1f5f9",
-          color: mode === m ? "#fff" : "#475569",
-          fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-          transition: "all 0.15s",
+          padding: '7px 15px', borderRadius: 7, border: 'none', cursor: 'pointer',
+          background: mode === m ? '#0f172a' : '#f1f5f9',
+          color: mode === m ? '#fff' : '#475569',
+          fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
         }}>{label}</button>
       );
 
+      const supActive = mode === 'connect' && edgeKind === 'supports';
+      const objActive = mode === 'connect' && edgeKind === 'objects';
+
       // ── Render ───────────────────────────────────────────────────────────────
       return (
-        <div
-          style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#f1f5f9", fontFamily: "'DM Sans', sans-serif" }}
-          onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-        >
-          {/* Header */}
-          <div style={{
-            padding: "11px 20px", background: "#fff", borderBottom: "1px solid #e2e8f0",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", fontFamily: "'Crimson Pro', serif", letterSpacing: "-0.02em" }}>
-              Argument Mapper
-              <span style={{ fontSize: 11, color: "#cbd5e1", fontFamily: "'DM Mono', monospace", fontWeight: 400, marginLeft: 10 }}>
-                {nodes.length}n · {edges.length}e
-              </span>
-            </span>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9' }}
+          onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
 
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {/* ── Header ── */}
+          <div style={{ padding: '11px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', fontFamily: "'Crimson Pro', serif", letterSpacing: '-0.02em' }}>
+              Argument Mapper
+              <span style={{ fontSize: 11, color: '#cbd5e1', fontFamily: "'DM Mono', monospace", fontWeight: 400, marginLeft: 10 }}>{nodes.length}n · {edges.length}e</span>
+            </span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <TBtn m="select" label="Select" />
 
-              {/* ▸ Supports button */}
-              <button
-                onClick={() => { setModeClean("connect"); setEdgeKind("supports"); }}
-                style={{
-                  padding: "7px 13px", borderRadius: 7, border: "none", cursor: "pointer",
-                  background: mode === "connect" && edgeKind === "supports" ? "#0f172a" : "#f1f5f9",
-                  color:      mode === "connect" && edgeKind === "supports" ? "#fff"    : "#475569",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                  transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6,
-                }}
-              >
-                <svg width={20} height={9} style={{ flexShrink: 0 }}>
-                  <line x1={0} y1={4.5} x2={14} y2={4.5}
-                    stroke={mode === "connect" && edgeKind === "supports" ? "#fff" : "#1e293b"} strokeWidth={1.8} />
-                  <polygon points="14,1.5 20,4.5 14,7.5"
-                    fill={mode === "connect" && edgeKind === "supports" ? "#fff" : "#1e293b"} />
+              {/* Supports */}
+              <button onClick={() => { setModeClean('connect'); setEdgeKind('supports'); }} style={{
+                padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                background: supActive ? '#0f172a' : '#f1f5f9', color: supActive ? '#fff' : '#475569',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <svg width={22} height={11} style={{ flexShrink: 0 }}>
+                  <line x1={0} y1={5.5} x2={15} y2={5.5} stroke={supActive ? '#fff' : '#1e293b'} strokeWidth={1.8} strokeLinecap="round" />
+                  <path d="M12 2L19 5.5L12 9" fill="none" stroke={supActive ? '#fff' : '#1e293b'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Supports
               </button>
 
-              {/* ▸ Objects to button */}
-              <button
-                onClick={() => { setModeClean("connect"); setEdgeKind("objects"); }}
-                style={{
-                  padding: "7px 13px", borderRadius: 7, border: "none", cursor: "pointer",
-                  background: mode === "connect" && edgeKind === "objects" ? "#dc2626" : "#f1f5f9",
-                  color:      mode === "connect" && edgeKind === "objects" ? "#fff"    : "#dc2626",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                  transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6,
-                }}
-              >
-                <svg width={20} height={9} style={{ flexShrink: 0 }}>
-                  <line x1={0} y1={4.5} x2={14} y2={4.5}
-                    stroke={mode === "connect" && edgeKind === "objects" ? "#fff" : "#dc2626"}
-                    strokeWidth={1.8} strokeDasharray="5,3" />
-                  <polygon points="14,1.5 20,4.5 14,7.5"
-                    fill={mode === "connect" && edgeKind === "objects" ? "#fff" : "#dc2626"} />
+              {/* Objects to */}
+              <button onClick={() => { setModeClean('connect'); setEdgeKind('objects'); }} style={{
+                padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                background: objActive ? '#dc2626' : '#f1f5f9', color: objActive ? '#fff' : '#dc2626',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <svg width={22} height={11} style={{ flexShrink: 0 }}>
+                  <line x1={0} y1={5.5} x2={15} y2={5.5} stroke={objActive ? '#fff' : '#dc2626'} strokeWidth={1.8} strokeLinecap="round" strokeDasharray="4,3" />
+                  <path d="M12 2L19 5.5L12 9" fill="none" stroke={objActive ? '#fff' : '#dc2626'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Objects to
               </button>
 
-              <TBtn m="group-build" label="Link"   />
-              <TBtn m="delete"      label="Delete" />
-
-              <div style={{ width: 1, height: 22, background: "#e2e8f0", marginLeft: 2 }} />
+              <TBtn m="group-build" label="Link" />
+              <TBtn m="delete" label="Delete" />
+              <div style={{ width: 1, height: 22, background: '#e2e8f0', marginLeft: 2 }} />
 
               {/* Undo */}
-              <button
-                onClick={undo}
-                disabled={!canUndo}
-                title="Undo (Ctrl+Z / Cmd+Z)"
-                style={{
-                  padding: "7px 12px", borderRadius: 7, border: "none",
-                  cursor: canUndo ? "pointer" : "default",
-                  background: "#f1f5f9",
-                  color: canUndo ? "#475569" : "#cbd5e1",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                  transition: "all 0.15s",
-                }}
-              >↩ Undo</button>
+              <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{
+                padding: '7px 12px', borderRadius: 7, border: 'none',
+                cursor: canUndo ? 'pointer' : 'default', background: '#f1f5f9',
+                color: canUndo ? '#475569' : '#cbd5e1',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+              }}>↩ Undo</button>
 
-              {/* Snap-to-grid toggle */}
-              <button
-                onClick={() => setSnapToGrid(s => !s)}
-                title="Snap nodes to the dot-grid while dragging"
-                style={{
-                  padding: "7px 12px", borderRadius: 7, border: "none", cursor: "pointer",
-                  background: snapToGrid ? "#6366f1" : "#f1f5f9",
-                  color:      snapToGrid ? "#fff"    : "#475569",
-                  fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                  transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5,
-                }}
-              >
-                <svg width={12} height={12} style={{ flexShrink: 0 }}>
-                  <circle cx={2}  cy={2}  r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
-                  <circle cx={10} cy={2}  r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
-                  <circle cx={2}  cy={10} r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
-                  <circle cx={10} cy={10} r={1.5} fill={snapToGrid ? "rgba(255,255,255,0.85)" : "#6366f1"} />
+              {/* Snap */}
+              <button onClick={() => setSnapToGrid(s => !s)} style={{
+                padding: '7px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                background: snapToGrid ? '#6366f1' : '#f1f5f9', color: snapToGrid ? '#fff' : '#475569',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width={12} height={12}>
+                  {[[2,2],[10,2],[2,10],[10,10]].map(([cx,cy]) => (
+                    <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.5} fill={snapToGrid ? 'rgba(255,255,255,0.85)' : '#6366f1'} />
+                  ))}
                 </svg>
                 Snap
               </button>
 
-              <div style={{ width: 1, height: 22, background: "#e2e8f0" }} />
-
+              <div style={{ width: 1, height: 22, background: '#e2e8f0' }} />
               <button onClick={exportPNG} disabled={exporting || nodes.length === 0} style={{
-                padding: "7px 13px", borderRadius: 7, border: "1px solid #e2e8f0",
-                background: "#fff", color: exporting ? "#94a3b8" : "#475569",
+                padding: '7px 13px', borderRadius: 7, border: '1px solid #e2e8f0',
+                background: '#fff', color: exporting ? '#94a3b8' : '#475569',
                 fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                cursor: exporting ? "wait" : "pointer",
-              }}>{exporting ? "Exporting…" : "↓ PNG"}</button>
+                cursor: exporting ? 'wait' : 'pointer',
+              }}>{exporting ? 'Exporting…' : '↓ PNG'}</button>
             </div>
           </div>
 
-          {/* Body */}
-          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {/* ── Body ── */}
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-            {/* Sidebar */}
-            <div style={{
-              width: 220, background: "#fff", borderRight: "1px solid #e2e8f0",
-              padding: 18, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto",
-            }}>
+            {/* ── Sidebar ── */}
+            <div style={{ width: 220, background: '#fff', borderRight: '1px solid #e2e8f0', padding: 18, display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>
+
               {/* Add claim */}
               <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>
-                  Add Claim
-                </div>
-                <textarea
-                  ref={textareaRef}
-                  value={inputText}
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Add Claim</div>
+                <textarea ref={textareaRef} value={inputText}
                   onChange={e => setInputText(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addNode(); } }}
-                  placeholder="Type a claim…"
-                  rows={3}
-                  style={{
-                    width: "100%", padding: "8px 10px", borderRadius: 7, marginBottom: 9,
-                    border: "1.5px solid #e2e8f0", background: "#f8fafc",
-                    fontFamily: "'Crimson Pro', Georgia, serif", fontSize: 14, color: "#0f172a",
-                    resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.5,
-                  }} />
-                <button onClick={addNode} style={{
-                  width: "100%", padding: "9px", borderRadius: 7, border: "none",
-                  background: "#0f172a", color: "#fff", fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 13, fontWeight: 600, cursor: "pointer",
-                }}>+ Add</button>
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNode(); } }}
+                  placeholder="Type a claim…" rows={3}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 7, marginBottom: 9, border: '1.5px solid #e2e8f0', background: '#f8fafc', fontFamily: "'Crimson Pro', Georgia, serif", fontSize: 14, color: '#0f172a', resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.5 }} />
+                <button onClick={addNode} style={{ width: '100%', padding: '9px', borderRadius: 7, border: 'none', background: '#0f172a', color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
               </div>
 
               {/* Linked premises builder */}
-              {(mode === "group-build" || mode === "group-target") && (
+              {(mode === 'group-build' || mode === 'group-target') && (
                 <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>
-                    Linked Premises
-                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Linked Premises</div>
                   {groupNodes.length === 0
-                    ? <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>Click premises on the canvas to add them to the linked group.</div>
+                    ? <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>Click premises on the canvas to add them.</div>
                     : <div>
                         {groupNodes.map(id => {
                           const n = nodes.find(x => x.id === id);
                           return n ? (
-                            <div key={id} style={{
-                              fontSize: 12, color: "#0369a1", background: "#f0f9ff",
-                              border: "1px solid #bae6fd", borderRadius: 6,
-                              padding: "5px 8px", marginBottom: 5,
-                              display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6,
-                              opacity: mode === "group-target" ? 0.6 : 1,
-                            }}>
-                              <span style={{ fontFamily: "'Crimson Pro', serif", fontSize: 12.5, lineHeight: 1.4 }}>
-                                {n.text.slice(0, 40)}{n.text.length > 40 ? "…" : ""}
-                              </span>
-                              {mode === "group-build" && (
-                                <button onClick={() => setGroupNodes(p => p.filter(x => x !== id))}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0, fontSize: 13, lineHeight: 1, flexShrink: 0 }}>✕</button>
+                            <div key={id} style={{ fontSize: 12, color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, padding: '5px 8px', marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6, opacity: mode === 'group-target' ? 0.6 : 1 }}>
+                              <span style={{ fontFamily: "'Crimson Pro', serif", fontSize: 12.5, lineHeight: 1.4 }}>{n.text.slice(0, 40)}{n.text.length > 40 ? '…' : ''}</span>
+                              {mode === 'group-build' && (
+                                <button onClick={() => setGroupNodes(p => p.filter(x => x !== id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, fontSize: 13, lineHeight: 1, flexShrink: 0 }}>✕</button>
                               )}
                             </div>
                           ) : null;
                         })}
-                        {mode === "group-build" && (
-                          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                        {mode === 'group-build' && (
+                          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                             {groupNodes.length >= 2 && (
-                              <button onClick={() => setMode("group-target")} style={{
-                                flex: 1, padding: "8px", borderRadius: 7, border: "none",
-                                background: "#0f172a", color: "#fff",
-                                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer",
-                              }}>Done →</button>
+                              <button onClick={() => setMode('group-target')} style={{ flex: 1, padding: '8px', borderRadius: 7, border: 'none', background: '#0f172a', color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done →</button>
                             )}
-                            <button onClick={() => setGroupNodes([])} style={{
-                              flex: groupNodes.length >= 2 ? "none" : 1,
-                              padding: "8px 10px", borderRadius: 7,
-                              border: "1px solid #e2e8f0", background: "#fff", color: "#94a3b8",
-                              fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: "pointer",
-                            }}>Clear</button>
+                            <button onClick={() => setGroupNodes([])} style={{ flex: groupNodes.length >= 2 ? 'none' : 1, padding: '8px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#94a3b8', fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: 'pointer' }}>Clear</button>
                           </div>
                         )}
-                        {mode === "group-target" && (
-                          <div style={{
-                            marginTop: 6, padding: "8px 10px", borderRadius: 7,
-                            background: "#faf5ff", border: "1px solid #d8b4fe",
-                            fontSize: 12, color: "#6b21a8",
-                          }}>
-                            Click the conclusion node on the canvas to connect these linked premises.
+                        {mode === 'group-target' && (
+                          <div style={{ marginTop: 6, padding: '8px 10px', borderRadius: 7, background: '#faf5ff', border: '1px solid #d8b4fe', fontSize: 12, color: '#6b21a8' }}>
+                            Click the conclusion node on the canvas.
                           </div>
                         )}
                       </div>
@@ -716,245 +609,208 @@
               )}
 
               {/* Connect source reminder */}
-              {mode === "connect" && connectSource && (() => {
+              {mode === 'connect' && connectSource && (() => {
                 const n = nodes.find(x => x.id === connectSource);
                 return n ? (
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>From</div>
-                    <div style={{ padding: "8px 10px", borderRadius: 7, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12.5, color: "#0369a1", fontFamily: "'Crimson Pro', serif", lineHeight: 1.4 }}>
-                      {n.text}
-                    </div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>From</div>
+                    <div style={{ padding: '8px 10px', borderRadius: 7, background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12.5, color: '#0369a1', fontFamily: "'Crimson Pro', serif", lineHeight: 1.4 }}>{n.text}</div>
                   </div>
                 ) : null;
               })()}
 
               {/* Selected node info */}
-              {selectedNode && mode === "select" && (() => {
+              {selectedNode && mode === 'select' && (() => {
                 const n = nodes.find(x => x.id === selectedNode);
                 if (!n) return null;
+                const rs = ROLE_STYLE[roleMap[n.id]] || ROLE_STYLE[null];
                 return (
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Selected</div>
-                    <div style={{ padding: "9px 11px", borderRadius: 8, background: "#f8fafc", border: "1.5px solid #e2e8f0", marginBottom: 8 }}>
-                      {roleMap[n.id] === "Conclusion" && (
-                        <div style={{ fontSize: 8.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: 4, letterSpacing: "0.12em" }}>Conclusion</div>
-                      )}
-                      <div style={{ fontSize: 12.5, color: "#0f172a", fontFamily: "'Crimson Pro', serif", lineHeight: 1.4 }}>{n.text}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Selected</div>
+                    <div style={{ padding: '9px 11px', borderRadius: 8, background: rs.bg, border: `1.5px solid ${rs.accent}`, borderTop: `3px solid ${rs.accent}`, marginBottom: 8 }}>
+                      {rs.label && <div style={{ fontSize: 8.5, fontWeight: 700, color: rs.accent, textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", marginBottom: 4, letterSpacing: '0.12em' }}>{rs.label}</div>}
+                      <div style={{ fontSize: 12.5, color: '#0f172a', fontFamily: "'Crimson Pro', serif", lineHeight: 1.4 }}>{n.text}</div>
                     </div>
-                    <button onClick={deleteSelected} style={{
-                      width: "100%", padding: "7px", borderRadius: 7,
-                      border: "1px solid #fca5a5", background: "#fff", color: "#dc2626",
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, cursor: "pointer",
-                    }}>Delete Node</button>
+                    <button onClick={deleteSelected} style={{ width: '100%', padding: '7px', borderRadius: 7, border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Delete Node</button>
                   </div>
                 );
               })()}
 
               {/* Legend */}
-              <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>How it works</div>
-                {[
-                  ["Premise",       "sends an arrow, receives none"],
-                  ["Conclusion",    "receives arrows, sends none"],
-                  ["Subconclusion", "both sends and receives"],
-                ].map(([role, desc]) => (
-                  <div key={role} style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>{role}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{desc}</div>
+              <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>How it works</div>
+                {[['Premise','#94a3b8','sends an arrow, receives none'],['Conclusion','#f59e0b','receives arrows, sends none'],['Subconclusion','#0ea5e9','both sends and receives']].map(([role, color, desc]) => (
+                  <div key={role} style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+                    <div style={{ width: 3, height: 32, borderRadius: 2, background: color, flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>{role}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{desc}</div>
+                    </div>
                   </div>
                 ))}
-                <div style={{ height: 1, background: "#f1f5f9", margin: "10px 0" }} />
+                <div style={{ height: 1, background: '#f1f5f9', margin: '10px 0' }} />
                 {Object.entries(EDGE_KINDS).map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <svg width={28} height={10}>
-                      <line x1={0} y1={5} x2={22} y2={5} stroke={v.stroke} strokeWidth={1.8} strokeDasharray={v.dash === "none" ? "" : v.dash} />
-                      <polygon points="22,2 28,5 22,8" fill={v.arrowFill} />
+                      <line x1={0} y1={5} x2={18} y2={5} stroke={v.stroke} strokeWidth={1.8} strokeDasharray={v.dash === 'none' ? '' : v.dash} />
+                      <path d="M18 2L24 5L18 8" fill="none" stroke={v.arrowFill} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <span style={{ fontSize: 11, color: v.stroke }}>{v.label}</span>
                   </div>
                 ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <svg width={28} height={10}>
+                    <line x1={0} y1={5} x2={14} y2={5} stroke="#dc2626" strokeWidth={1.8} strokeDasharray="7,4" />
+                    <path d="M14 2L20 5L14 8" fill="none" stroke="#dc2626" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx={25} cy={5} r={2.5} fill="#fff2f2" stroke="#dc2626" strokeWidth={1.3} />
+                  </svg>
+                  <span style={{ fontSize: 11, color: '#dc2626' }}>Objects to reasoning</span>
+                </div>
               </div>
             </div>
 
-            {/* Canvas area */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* ── Canvas area ── */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
               {/* Status bar */}
-              <div style={{
-                padding: "5px 18px", background: "#f8fafc", borderBottom: "1px solid #e8edf2",
-                fontSize: 11.5, color: "#64748b", fontFamily: "'DM Mono', monospace",
-                display: "flex", alignItems: "center", gap: 8,
-              }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0,
-                  background: modeColor[mode] || "#94a3b8",
-                }} />
-                {getHint()}
+              <div style={{ padding: '5px 18px', background: '#f8fafc', borderBottom: '1px solid #e8edf2', fontSize: 11.5, color: '#64748b', fontFamily: "'DM Mono', monospace", display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', display: 'inline-block', flexShrink: 0, background: modeColor[mode] || '#94a3b8' }} />
+                <span style={{ flex: 1 }}>{getHint()}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                  <button onClick={() => setZoom(z => Math.max(0.25, +(z - 0.1).toFixed(2)))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>−</button>
+                  <input type="range" min={0.25} max={2} step={0.05} value={zoom} onChange={e => setZoom(+e.target.value)} style={{ width: 80, cursor: 'pointer', accentColor: '#475569' }} />
+                  <button onClick={() => setZoom(z => Math.min(2, +(z + 0.1).toFixed(2)))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>+</button>
+                  <span style={{ fontSize: 10.5, color: '#94a3b8', minWidth: 34, textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
+                  <button onClick={() => setZoom(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 10.5, textDecoration: 'underline', padding: '0 2px' }}>reset</button>
+                </div>
               </div>
 
               {/* Canvas */}
-              <div
-                ref={canvasRef}
-                onClick={handleCanvasClick}
-                onMouseDown={handleCanvasMouseDown}
+              <div ref={canvasRef} onClick={handleCanvasClick} onMouseDown={handleCanvasMouseDown}
                 style={{
-                  flex: 1, position: "relative", overflow: "hidden",
-                  backgroundImage: "radial-gradient(circle, #c8d3df 1px, transparent 1px)",
-                  backgroundSize: "28px 28px",
-                  cursor: mode === "delete"       ? "not-allowed"
-                        : mode === "group-target" ? "crosshair"
-                        : mode !== "select"       ? "crosshair"
-                        :                           "default",
-                }}
-              >
-                {/* SVG layer */}
-                <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "all", overflow: "visible" }}>
-                  <defs>
-                    {Object.entries(EDGE_KINDS).map(([k, v]) => (
-                      <marker key={k} id={`arr-${k}`} markerWidth={9} markerHeight={9} refX={7} refY={4} orient="auto">
-                        <path d="M0,0 L0,8 L9,4 z" fill={v.arrowFill} />
+                  flex: 1, position: 'relative', overflow: 'hidden',
+                  backgroundImage: 'radial-gradient(circle, #c8d3df 1px, transparent 1px)',
+                  backgroundSize: `${28 * zoom}px ${28 * zoom}px`,
+                  cursor: mode === 'delete' ? 'not-allowed' : mode !== 'select' ? 'crosshair' : 'default',
+                }}>
+
+                {/* Zoom wrapper */}
+                <div style={{ position: 'absolute', top: 0, left: 0, transformOrigin: '0 0', transform: `scale(${zoom})`, width: `${100 / zoom}%`, height: `${100 / zoom}%` }}>
+
+                  {/* SVG layer */}
+                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'all', overflow: 'visible' }}>
+                    <defs>
+                      {Object.entries(EDGE_KINDS).map(([k, v]) => (
+                        <marker key={k} id={`arr-${k}`} markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
+                          <path d="M1 1L5 3L1 5" fill="none" stroke={v.arrowFill} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+                        </marker>
+                      ))}
+                      <marker id="arr-supports-sel" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
+                        <path d="M1 1L5 3L1 5" fill="none" stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
                       </marker>
+                      <marker id="arr-objects-sel" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
+                        <path d="M1 1L5 3L1 5" fill="none" stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+                      </marker>
+                      <marker id="arr-rebukes" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
+                        <path d="M1 1L5 3L1 5" fill="none" stroke="#dc2626" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+                      </marker>
+                      <marker id="arr-rebukes-sel" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
+                        <path d="M1 1L5 3L1 5" fill="none" stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+                      </marker>
+                    </defs>
+
+                    <rect x="-9999" y="-9999" width="99999" height="99999" fill="transparent" style={{ pointerEvents: 'all' }}
+                      onClick={e => { e.stopPropagation(); handleCanvasClick(); }} />
+
+                    {selBox && selBox.w > 2 && selBox.h > 2 && (
+                      <rect x={selBox.x} y={selBox.y} width={selBox.w} height={selBox.h}
+                        fill="rgba(99,102,241,0.07)" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="5,3" rx={4}
+                        style={{ pointerEvents: 'none' }} />
+                    )}
+
+                    {(mode === 'group-build' || mode === 'group-target') && groupNodes.length >= 2 && (() => {
+                      const bbox = groupBBox(groupNodes, nodes);
+                      if (!bbox) return null;
+                      const { x: bx, y: by, w: bw, h: bh } = bbox;
+                      const armH = bh * 0.4, rx = 10;
+                      const p = [`M ${bx} ${by + armH}`, `L ${bx} ${by + rx}`, `Q ${bx} ${by} ${bx + rx} ${by}`, `L ${bx + bw - rx} ${by}`, `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`, `L ${bx + bw} ${by + armH}`].join(' ');
+                      return <path d={p} fill="none" stroke={mode === 'group-target' ? '#a855f7' : '#f59e0b'} strokeWidth={1.8} strokeDasharray="6,3" strokeLinecap="round" style={{ pointerEvents: 'none' }} />;
+                    })()}
+
+                    {edges.map(edge => (
+                      <EdgeSVG key={edge.id} edge={edge} nodes={nodes} edges={edges}
+                        selected={selectedEdge === edge.id}
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (mode === 'delete') {
+                            setPendingDelete({ type: 'edge', id: edge.id });
+                          } else if (mode === 'connect' && edgeKind === 'objects' && connectSource && !edge.targetEdge) {
+                            const exists = edges.find(ed => ed.targetEdge === edge.id && ed.sources.length === 1 && ed.sources[0] === connectSource);
+                            if (!exists) { pushHistory(nodes, edges); setEdges(p => [...p, { id: uid(), sources: [connectSource], targetEdge: edge.id, kind: 'objects' }]); }
+                            setConnectSource(null);
+                          } else {
+                            setSelectedEdge(edge.id); setSelectedNode(null);
+                          }
+                        }} />
                     ))}
-                    <marker id="arr-supports-sel" markerWidth={9} markerHeight={9} refX={7} refY={4} orient="auto">
-                      <path d="M0,0 L0,8 L9,4 z" fill="#f59e0b" />
-                    </marker>
-                    <marker id="arr-objects-sel" markerWidth={9} markerHeight={9} refX={7} refY={4} orient="auto">
-                      <path d="M0,0 L0,8 L9,4 z" fill="#f59e0b" />
-                    </marker>
-                  </defs>
 
-                  {/* Click-through background */}
-                  <rect x="-9999" y="-9999" width="99999" height="99999" fill="transparent"
-                    style={{ pointerEvents: "all" }}
-                    onClick={e => { e.stopPropagation(); handleCanvasClick(); }} />
+                    {mode === 'connect' && connectSource && (() => {
+                      const n = nodes.find(x => x.id === connectSource);
+                      if (!n) return null;
+                      return <rect x={n.x - 5} y={n.y - 5} width={NODE_W + 10} height={NODE_H + 10} rx={14}
+                        fill="none" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="5,3" style={{ pointerEvents: 'none' }} />;
+                    })()}
+                  </svg>
 
-                  {/* Rubber-band selection rect */}
-                  {selBox && selBox.w > 2 && selBox.h > 2 && (
-                    <rect
-                      x={selBox.x} y={selBox.y} width={selBox.w} height={selBox.h}
-                      fill="rgba(99,102,241,0.07)" stroke="#6366f1" strokeWidth={1.5}
-                      strokeDasharray="5,3" rx={4}
-                      style={{ pointerEvents: "none" }}
-                    />
-                  )}
-
-                  {/* Group bracket preview */}
-                  {(mode === "group-build" || mode === "group-target") && groupNodes.length >= 2 && (() => {
-                    const bbox = groupBBox(groupNodes, nodes);
-                    if (!bbox) return null;
-                    const { x: bx, y: by, w: bw, h: bh } = bbox;
-                    const rx = 10, armH = bh * 0.4;
-                    const previewPath = [
-                      `M ${bx} ${by + armH}`,
-                      `L ${bx} ${by + rx}`,
-                      `Q ${bx} ${by} ${bx + rx} ${by}`,
-                      `L ${bx + bw - rx} ${by}`,
-                      `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`,
-                      `L ${bx + bw} ${by + armH}`,
-                    ].join(" ");
-                    return (
-                      <path d={previewPath} fill="none"
-                        stroke={mode === "group-target" ? "#a855f7" : "#f59e0b"}
-                        strokeWidth={1.8} strokeDasharray="6,3" strokeLinecap="round"
-                        style={{ pointerEvents: "none" }} />
-                    );
-                  })()}
-
-                  {/* Edges */}
-                  {edges.map(edge => (
-                    <EdgeSVG key={edge.id} edge={edge} nodes={nodes}
-                      selected={selectedEdge === edge.id}
-                      onClick={e => {
-                        e.stopPropagation();
-                        if (mode === "delete") { setPendingDelete({ type: "edge", id: edge.id }); }
-                        else { setSelectedEdge(edge.id); setSelectedNode(null); }
-                      }} />
+                  {/* Node cards */}
+                  {nodes.map(node => (
+                    <NodeCard key={node.id} node={node} role={roleMap[node.id]}
+                      selected={selectedNode === node.id || selectedNodes.includes(node.id)}
+                      inGroup={groupNodes.includes(node.id)}
+                      isTarget={mode === 'group-target' && !groupNodes.includes(node.id)}
+                      onMouseDown={e => handleNodeMouseDown(e, node.id)}
+                      onClick={e => handleNodeClick(e, node.id)} />
                   ))}
 
-                  {/* Connect source ring */}
-                  {mode === "connect" && connectSource && (() => {
-                    const n = nodes.find(x => x.id === connectSource);
-                    if (!n) return null;
-                    return <rect x={n.x - 5} y={n.y - 5} width={NODE_W + 10} height={NODE_H + 10} rx={14}
-                      fill="none" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="5,3"
-                      style={{ pointerEvents: "none" }} />;
-                  })()}
-                </svg>
+                  {/* Empty state */}
+                  {nodes.length === 0 && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
+                      <div style={{ fontSize: 34 }}>🗺</div>
+                      <div style={{ fontSize: 15, color: '#94a3b8', fontFamily: "'Crimson Pro', serif" }}>Add a claim from the left panel to begin</div>
+                    </div>
+                  )}
 
-                {/* Node cards */}
-                {nodes.map(node => (
-                  <NodeCard
-                    key={node.id}
-                    node={node}
-                    role={roleMap[node.id]}
-                    selected={selectedNode === node.id || selectedNodes.includes(node.id)}
-                    inGroup={groupNodes.includes(node.id)}
-                    isTarget={mode === "group-target" && !groupNodes.includes(node.id)}
-                    onMouseDown={e => handleNodeMouseDown(e, node.id)}
-                    onClick={e => handleNodeClick(e, node.id)}
-                  />
-                ))}
+                </div>{/* end zoom wrapper */}
 
-                {/* Delete confirmation modal */}
+                {/* Delete modal — outside zoom wrapper */}
                 {pendingDelete && (() => {
-                  const isNode = pendingDelete.type === "node";
+                  const isNode = pendingDelete.type === 'node';
                   const node = isNode ? nodes.find(n => n.id === pendingDelete.id) : null;
-                  const label = isNode
-                    ? `"${node && node.text ? node.text.slice(0, 48) + (node.text.length > 48 ? "…" : "") : ""}"`
-                    : "this arrow";
+                  const label = isNode ? `"${node?.text?.slice(0, 48) ?? ''}${(node?.text?.length ?? 0) > 48 ? '…' : ''}"` : 'this arrow';
                   return (
-                    <div style={{
-                      position: "absolute", inset: 0, display: "flex", alignItems: "center",
-                      justifyContent: "center", background: "rgba(15,23,42,0.25)", zIndex: 200,
-                    }} onClick={cancelDelete}>
-                      <div onClick={e => e.stopPropagation()} style={{
-                        background: "#fff", borderRadius: 12, padding: "24px 28px",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-                        maxWidth: 340, width: "90%", fontFamily: "'DM Sans', sans-serif",
-                      }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
-                          Delete {isNode ? "node" : "arrow"}?
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.25)', zIndex: 200 }} onClick={cancelDelete}>
+                      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: '24px 28px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', maxWidth: 340, width: '90%', fontFamily: "'DM Sans', sans-serif" }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Delete {isNode ? 'node' : 'arrow'}?</div>
+                        <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.55, marginBottom: 20, fontFamily: "'Crimson Pro', serif" }}>
+                          {isNode ? `Remove ${label} and all its connected arrows?` : 'Remove this arrow from the diagram?'}
                         </div>
-                        <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.55, marginBottom: 20, fontFamily: "'Crimson Pro', serif" }}>
-                          {isNode ? `Remove ${label} and all its connected arrows?` : "Remove this arrow from the diagram?"}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                          <button onClick={cancelDelete} style={{
-                            padding: "8px 16px", borderRadius: 7, border: "1px solid #e2e8f0",
-                            background: "#fff", color: "#475569", fontSize: 13, fontWeight: 500,
-                            cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                          }}>Cancel</button>
-                          <button onClick={confirmDelete} style={{
-                            padding: "8px 16px", borderRadius: 7, border: "none",
-                            background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600,
-                            cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                          }}>Delete</button>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button onClick={cancelDelete} style={{ padding: '8px 16px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                          <button onClick={confirmDelete} style={{ padding: '8px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Delete</button>
                         </div>
                       </div>
                     </div>
                   );
                 })()}
 
-                {/* Empty state */}
-                {nodes.length === 0 && (
-                  <div style={{
-                    position: "absolute", inset: 0, display: "flex", alignItems: "center",
-                    justifyContent: "center", flexDirection: "column", gap: 10, pointerEvents: "none",
-                  }}>
-                    <div style={{ fontSize: 34 }}>🗺</div>
-                    <div style={{ fontSize: 15, color: "#94a3b8", fontFamily: "'Crimson Pro', serif" }}>
-                      Add a claim from the left panel to begin
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+              </div>{/* end canvas */}
+            </div>{/* end canvas area */}
+          </div>{/* end body */}
         </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<ArgumentMapper />);
+    ReactDOM.createRoot(document.getElementById('root')).render(<ArgumentMapper />);
   </script>
 </body>
 </html>
