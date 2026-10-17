@@ -1,816 +1,1952 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Argument Mapper</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #root { height: 100%; width: 100%; overflow: hidden; }
-    body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Map an argument on a board: claims as boxes, support arrows from reasons to the claims they back, dashed arrows for objections. The map is written out in standard form as you build it, ready to copy. No sign-in. Your map stays in your browser.">
+<title>Argument Mapper</title>
+<link rel="canonical" href="https://maxwellunlimited.com/argument-mapper.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Maxwell Unlimited">
+<meta property="og:title" content="Argument Mapper">
+<meta property="og:description" content="Map an argument on a board: claims as boxes, support arrows from reasons to the claims they back, dashed arrows for objections. The map is written out in standard form as you build it, ready to copy. No sign-in. Your map stays in your browser.">
+<meta property="og:url" content="https://maxwellunlimited.com/argument-mapper.html">
+<meta property="og:image" content="https://maxwellunlimited.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Maxwell Unlimited wordmark beside Diagram 17B, a network of labeled points joined by fine lines.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://maxwellunlimited.com/favicon.ico">
+<link rel="apple-touch-icon" href="https://maxwellunlimited.com/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400&family=Overpass+Mono:wght@400;500&family=Overpass:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.umd.min.js"></script>
+<style>
+  /* House look (Maxwell Unlimited style guide §2, §3, §7). Every text pair is at least 4.5:1 and
+     every control edge at least 3:1, in both themes. */
+  :root {
+    --paper: #f3f0e8;
+    --field: #faf8f3;
+    --ink: #151515;
+    --graphite: #575853;
+    --accent: #173a63;
+    --line: rgba(21, 21, 21, 0.18);
+    --edge: #7a786f;
+    --accent-wash: rgba(23, 58, 99, 0.08);
+    --wrong: #8c2f24;
+    --wrong-wash: rgba(140, 47, 36, 0.08);
+    --btn-bg: #151515;
+    --btn-fg: #f3f0e8;
+    --dot: rgba(21, 21, 21, 0.22);
+    --mono: "Overpass Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+    --prose: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --board-h: clamp(28rem, 70vh, 54rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #191917;
+      --field: #211f1c;
+      --ink: #ece9e1;
+      --graphite: #a3a49c;
+      --accent: #8fb3e3;
+      --line: rgba(236, 233, 225, 0.2);
+      --edge: #7d7c75;
+      --accent-wash: rgba(143, 179, 227, 0.1);
+      --wrong: #e2907f;
+      --wrong-wash: rgba(226, 144, 127, 0.1);
+      --btn-bg: #ece9e1;
+      --btn-fg: #191917;
+      --dot: rgba(236, 233, 225, 0.18);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #191917;
+    --field: #211f1c;
+    --ink: #ece9e1;
+    --graphite: #a3a49c;
+    --accent: #8fb3e3;
+    --line: rgba(236, 233, 225, 0.2);
+    --edge: #7d7c75;
+    --accent-wash: rgba(143, 179, 227, 0.1);
+    --wrong: #e2907f;
+    --wrong-wash: rgba(226, 144, 127, 0.1);
+    --btn-bg: #ece9e1;
+    --btn-fg: #191917;
+    --dot: rgba(236, 233, 225, 0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: 0.4; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .am-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .am-skip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translateY(-120%);
+    padding: 0.75rem 1rem;
+    background: var(--ink);
+    color: var(--paper);
+    z-index: 30;
+  }
+  .am-skip:focus { transform: translateY(0); }
+
+  /* ── frame ── */
+  .am-shell {
+    width: min(100%, 92rem);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: clamp(1.25rem, 3vw, 2rem);
+  }
+  .am-masthead { padding-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
+  .am-homelink {
+    display: inline-block;
+    color: var(--accent);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .am-homelink:hover { text-decoration: underline; text-underline-offset: 0.25rem; }
+  .am-eyebrow {
+    margin: 1.1rem 0 0.7rem;
+    color: var(--graphite);
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .am-title {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(1.85rem, 5.4vw, 2.9rem);
+    line-height: 1.04;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .am-intro {
+    margin: 0.9rem 0 0;
+    max-width: 40rem;
+    font-family: var(--prose);
+    font-size: 1.02rem;
+    line-height: 1.7;
+  }
+  .am-main { min-width: 0; display: grid; gap: 1rem; align-content: start; }
+
+  /* ── toolbar ── */
+  .am-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; }
+  .am-group { display: inline-flex; flex-wrap: wrap; }
+  .am-tool {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--edge);
+    background: var(--field);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .am-group .am-tool + .am-tool { margin-left: -1px; }
+  .am-tool:hover:enabled { border-color: var(--accent); color: var(--accent); z-index: 1; }
+  .am-tool:focus-visible { z-index: 2; }
+  .am-tool[aria-pressed="true"] { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-fg); z-index: 1; }
+  .am-tool--objects { color: var(--wrong); }
+  .am-tool--objects[aria-pressed="true"] { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
+  .am-tool svg { flex: none; }
+  .am-tool--num { min-width: 4.4rem; justify-content: center; font-variant-numeric: tabular-nums; }
+
+  /* ── workspace ── */
+  .am-work { display: grid; grid-template-columns: 18rem minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .am-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    max-height: calc(var(--board-h) + 2.6rem);
+    overflow-y: auto;
+  }
+  .am-panels { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .am-panel { padding: 0.9rem; border: 1px solid var(--edge); background: var(--field); min-width: 0; }
+  .am-h2 {
+    margin: 0 0 0.6rem;
+    color: var(--graphite);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .am-h3 {
+    margin: 1rem 0 0.45rem;
+    color: var(--graphite);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  /* Argument labels keep their case (Cd1, not CD1) inside uppercase headings. */
+  .am-code { color: var(--accent); text-transform: none; letter-spacing: 0.02em; }
+  .am-textarea,
+  .am-select {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--edge);
+    border-radius: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--prose);
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+  .am-textarea { min-height: 5.2rem; padding: 0.55rem 0.6rem; resize: vertical; }
+  .am-textarea::placeholder { color: var(--graphite); opacity: 1; }
+  .am-select { padding: 0.5rem 0.45rem; }
+  .am-label {
+    display: block;
+    margin: 0.7rem 0 0.3rem;
+    color: var(--graphite);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .am-note { margin: 0.5rem 0 0; color: var(--graphite); font-size: 0.78rem; line-height: 1.55; }
+  .am-note--warn { color: var(--wrong); }
+  .am-desc { margin: 0; font-family: var(--prose); font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .am-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; align-items: center; }
+  .am-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--edge);
+    background: none;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .am-btn:hover:enabled { border-color: var(--accent); color: var(--accent); }
+  .am-btn--solid { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-fg); }
+  .am-btn--solid:hover:enabled { border-color: var(--accent); background: var(--accent); color: var(--btn-fg); }
+  .am-btn--danger { color: var(--wrong); }
+  .am-btn--danger:hover:enabled { border-color: var(--wrong); color: var(--wrong); background: var(--wrong-wash); }
+  .am-btn--small { min-height: 2rem; padding: 0.25rem 0.55rem; font-size: 0.68rem; }
+  .am-btn--wide { width: 100%; margin-top: 0.6rem; }
+  .am-seg { display: inline-flex; flex-wrap: wrap; }
+  .am-seg .am-btn + .am-btn { margin-left: -1px; }
+  .am-seg .am-btn[aria-pressed="true"] { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-fg); position: relative; }
+  .am-seg .am-btn--obj { color: var(--wrong); }
+  .am-seg .am-btn--obj[aria-pressed="true"] { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
+  .am-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+  .am-item { padding: 0.5rem 0.55rem 0.55rem; border: 1px solid var(--line); background: var(--paper); }
+  .am-item .am-row { margin-top: 0.4rem; }
+  .am-item .am-select { margin-top: 0.45rem; font-size: 0.92rem; }
+  .am-item-text { font-family: var(--prose); font-size: 0.95rem; line-height: 1.45; overflow-wrap: anywhere; }
+
+  /* ── board ── */
+  .am-stage { min-width: 0; border: 1px solid var(--edge); background: var(--paper); }
+  .am-status {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-height: 2.6rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--graphite);
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+  .am-mode {
+    flex: none;
+    color: var(--accent);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .am-board {
+    position: relative;
+    height: var(--board-h);
+    overflow: hidden;
+    background-color: var(--paper);
+    background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.3px);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+    outline: none;
+  }
+  .am-board.is-panning { cursor: grabbing; }
+  .am-board.is-picking { cursor: crosshair; }
+  .am-board:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .am-layer { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .am-svg { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+  .am-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    color: var(--graphite);
+    font-family: var(--prose);
+    font-size: 1.05rem;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .am-card {
+    position: absolute;
+    width: 224px;
+    min-height: 60px;
+    padding: 9px 12px;
+    border: 1px solid var(--edge);
+    background: var(--field);
+    color: var(--ink);
+    font-family: var(--prose);
+    font-size: 16px;
+    line-height: 1.4;
+    cursor: grab;
+    touch-action: none;
+  }
+  .am-board.is-picking .am-card { cursor: pointer; }
+  .am-card--main { border: 2px solid var(--ink); padding: 8px 11px; }
+  .am-card--trib { border-color: var(--ink); }
+  .am-card--objection { border-style: dashed; border-color: var(--wrong); }
+  .am-card.is-selected { outline: 2px solid var(--accent); outline-offset: 3px; z-index: 2; }
+  .am-card.is-chosen { outline: 2px dashed var(--accent); outline-offset: 3px; z-index: 2; }
+  .am-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; z-index: 3; }
+  .am-card-label {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 14px;
+    letter-spacing: 0.04em;
+  }
+  .am-card-label--objection { color: var(--wrong); }
+  .am-card-label--plain { color: var(--graphite); }
+  .am-card-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .am-card-edit {
+    display: block;
+    width: 100%;
+    min-height: 3.2em;
+    padding: 0;
+    border: 0;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    overflow: hidden;
+  }
+  .am-card.is-editing { outline: 2px solid var(--accent); outline-offset: 3px; cursor: text; z-index: 4; }
+
+  .am-stroke { fill: none; stroke: var(--ink); stroke-width: 1.8; }
+  .am-head { fill: var(--ink); }
+  .am-edge--objects .am-stroke { stroke: var(--wrong); stroke-dasharray: 7 5; }
+  .am-edge--objects .am-head { fill: var(--wrong); }
+  .am-edge.is-selected .am-stroke { stroke: var(--accent); stroke-width: 2.8; stroke-dasharray: none; }
+  .am-edge.is-selected .am-head { fill: var(--accent); }
+  .am-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+  .am-edge-label {
+    fill: var(--wrong);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .am-edge-patch { fill: var(--paper); pointer-events: none; }
+  .am-edge.is-selected .am-edge-label { fill: var(--accent); }
+  .am-preview { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-dasharray: 6 4; }
+  .am-boxsel { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 3; }
+
+  /* ── standard form ── */
+  .am-output { margin-top: 0.5rem; }
+  .am-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .am-section-head .am-h2 { margin: 0; }
+  .am-preview-box { padding: 1rem 1.1rem; border: 1px solid var(--edge); background: var(--field); overflow-x: auto; }
+  .am-pre {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .am-pre--empty { color: var(--graphite); font-family: var(--prose); font-size: 1rem; }
+
+  .am-help { margin-top: 0.5rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+  .am-help summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 0.74rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .am-help-body { max-width: 44rem; font-family: var(--prose); font-size: 1rem; line-height: 1.65; }
+  .am-help-body p { margin: 0.8rem 0 0; }
+  .am-help-body strong { font-weight: 700; }
+  .am-help-body kbd { font-family: var(--mono); font-size: 0.85em; }
+
+  .am-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+    color: var(--graphite);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .am-footer a { color: var(--accent); text-underline-offset: 0.25rem; }
+
+  .am-dialog {
+    max-width: min(26rem, calc(100vw - 2rem));
+    padding: 1.25rem;
+    border: 1px solid var(--edge);
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .am-dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+  .am-dialog h2 { margin: 0 0 0.5rem; font-family: var(--display); font-weight: 400; font-size: 1.25rem; letter-spacing: 0.03em; text-transform: uppercase; }
+  .am-dialog p { margin: 0; font-family: var(--prose); line-height: 1.55; }
+
+  /* Phones and narrow windows: add a claim, then the board, then the panels for the selection. */
+  @media (max-width: 900px) {
+    :root { --board-h: clamp(22rem, 62vh, 40rem); }
+    .am-work { display: flex; flex-direction: column; align-items: stretch; }
+    .am-side { display: contents; }
+    .am-add { order: 1; }
+    .am-stage { order: 2; }
+    .am-panels { order: 3; }
+  }
+  /* On small screens the toolbar buttons sit apart, so a wrapped row never loses its edge. */
+  @media (max-width: 600px) {
+    .am-toolbar { gap: 0.35rem 0.6rem; }
+    .am-group { gap: 0.3rem; }
+    .am-group .am-tool + .am-tool { margin-left: 0; }
+    .am-tool { min-height: 2.3rem; padding: 0.35rem 0.55rem; font-size: 0.68rem; letter-spacing: 0.06em; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+  @media print {
+    html, body { background: #fff !important; color: #000 !important; }
+    .am-skip, .am-toolbar, .am-side, .am-status, .am-help, .am-footer, .am-section-head .am-row { display: none !important; }
+    .am-work { display: block; }
+    .am-stage { border: 0; }
+  }
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script type="text/babel">
-    const { useState, useRef, useEffect, useCallback } = React;
+<a class="am-skip" href="#main">Skip to content</a>
+<div class="am-shell">
+  <header class="am-masthead">
+    <a class="am-homelink" id="am-homelink" href="https://maxwellunlimited.com/workshop.html">← Workshop</a>
+    <p class="am-eyebrow">Argument structure · MU-W-001 · Public Beta</p>
+    <h1 class="am-title">Argument Mapper</h1>
+    <p class="am-intro">Type each claim and add it to the board, then draw arrows. A support arrow runs from a reason to the claim it supports; a dashed arrow marks an objection. The map is written out in standard form below as you build it.</p>
+  </header>
 
-    const NODE_W = 192;
-    const NODE_H = 76;
-    const PAD    = 16;
+  <main class="am-main" id="main">
+    <div id="root"></div>
+    <noscript><p class="am-intro">This tool needs JavaScript. Turn it on and reload the page.</p></noscript>
+  </main>
 
-    const EDGE_KINDS = {
-      supports: { label: 'Supports',   stroke: '#1e293b', dash: 'none', arrowFill: '#1e293b' },
-      objects:  { label: 'Objects to', stroke: '#dc2626', dash: '7,4',  arrowFill: '#dc2626' },
+  <footer class="am-footer">
+    <span>No sign-in · Your map stays in your browser</span>
+    <a id="am-feedback" href="https://airtable.com/appxdI0VPvkKlM8u1/pag4PguwP8nUxPA3p/form" target="_blank" rel="noopener">Send feedback<span class="am-sr"> (opens in a new tab)</span> <span aria-hidden="true">↗</span></a>
+  </footer>
+</div>
+
+<script>
+  /* Embedded in Canvas, the Workshop link opens a new tab instead of replacing the tool inside the frame. */
+  (function () {
+    var framed = true;
+    try { framed = window.self !== window.top; } catch (e) {}
+    if (!framed) return;
+    var link = document.getElementById("am-homelink");
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.insertAdjacentHTML("beforeend", '<span class="am-sr"> (opens in a new tab)</span>');
+  })();
+
+  /* Feedback goes to one short form shared by the Workshop tools. The link arrives filled in
+     (prefill_ in the URL) with the tool and the student's map in standard form. */
+  (function () {
+    var form = "https://airtable.com/appxdI0VPvkKlM8u1/pag4PguwP8nUxPA3p/form";
+    var aim = function () {
+      var a = document.getElementById("am-feedback");
+      var work = (window.amFeedbackText || "").trim().slice(0, 4000);
+      a.href = form + "?prefill_Tool=" + encodeURIComponent("Argument Mapper") + "&hide_Tool=true"
+        + "&hide_Item=true&hide_Student%20work=true&hide_Ease%20of%20Use=true&hide_Helped%20Learning=true&hide_Suggestions=true"
+        + (work ? "&prefill_Student+work=" + encodeURIComponent(work) : "");
+    };
+    ["mouseover", "focusin", "click", "contextmenu"].forEach(function (ev) {
+      document.addEventListener(ev, function (e) { if (e.target.closest && e.target.closest("#am-feedback")) aim(); }, true);
+    });
+  })();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var e = React.createElement;
+  var html = htm.bind(e);
+  var useState = React.useState, useRef = React.useRef, useEffect = React.useEffect, useMemo = React.useMemo;
+
+  var STORAGE_KEY = "argumentMapper.v1";
+  var NODE_W = 224, NODE_MIN_H = 60, GROUP_PAD = 14, GRID = 28;
+  var ZOOM_MIN = 0.25, ZOOM_MAX = 2.5;
+  var HEAD_L = 11, HEAD_W = 5.5;
+
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+  function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+  function clip(s, n) { s = String(s).replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s; }
+  function plural(n, one, many) { return n === 1 ? one : many; }
+
+  /* ── Argument engine. Copied word for word from the Schematized Argument Builder (MU-W-010), so
+     both tools label and print an argument the same way: supports S1, S2, ... numbered straight
+     through, tributary conclusions Cd1, Cd2, ..., the main conclusion C, and [= Cd1] on the line
+     of the main argument that restates a tributary's conclusion. ── */
+  var SAB_RULE_MAX = 40;
+
+  function sabStructure(blocks, opts) {
+    const o = opts || {};
+    const byId = {};
+    blocks.forEach(b => { byId[b.id] = b; });
+    const feeds = {};
+    blocks.forEach(b => { feeds[b.id] = []; });
+    blocks.forEach(b => b.supports.forEach((s, si) => {
+      if (s.linkedFrom && byId[s.linkedFrom] && s.linkedFrom !== b.id) feeds[s.linkedFrom].push({ to: b.id, sid: s.id, slot: si });
+    }));
+    const isMain = id => feeds[id].length === 0;
+    const order = [], placed = new Set();
+    const visit = (id, path) => {
+      if (placed.has(id) || path.has(id)) return;
+      path.add(id);
+      byId[id].supports.forEach(s => { if (s.linkedFrom && byId[s.linkedFrom]) visit(s.linkedFrom, path); });
+      path.delete(id);
+      placed.add(id);
+      order.push(id);
+    };
+    blocks.filter(b => isMain(b.id)).forEach(b => visit(b.id, new Set()));
+    blocks.forEach(b => visit(b.id, new Set()));
+    const mains = order.filter(isMain);
+    const kindOf = o.kindOf || (() => "d");
+    const owner = o.ownerOf ? o.ownerOf({ order, mains, byId, isMain, feeds }) : (mains[0] || null);
+    const ownerIsTrib = !!owner && !isMain(owner) && kindOf(byId[owner]) !== "p";
+    const label = {}, count = { d: 0, p: 0 };
+    if (ownerIsTrib) { label[owner] = "Cd1"; count.d = Math.max(1, o.rivalMax || 1); }
+    order.forEach(id => {
+      if (label[id]) return;
+      if (isMain(id)) { label[id] = "C"; return; }
+      const k = kindOf(byId[id]) === "p" ? "p" : "d";
+      count[k] += 1;
+      label[id] = (k === "p" ? "Cp" : "Cd") + count[k];
+    });
+    if (o.rivalsActive && owner && label[owner] === "C") label[owner] = "C1";
+    const rivalPrefix = owner ? label[owner].replace(/\d+$/, "") : "C";
+    const num = {};
+    let n = 1;
+    order.forEach(id => byId[id].supports.forEach(s => { num[s.id] = n++; }));
+    const name = {};
+    order.forEach(id => {
+      if (isMain(id)) name[id] = mains.length === 1 ? (o.mainName ? o.mainName(byId[id]) : "Main Argument") : "Argument " + (mains.indexOf(id) + 1);
+      else name[id] = o.tributaryName ? o.tributaryName(byId[id], label[id]) : "Tributary Argument (" + label[id] + ")";
+    });
+    const connector = {};
+    order.forEach(id => {
+      if (isMain(id)) return;
+      const parts = feeds[id].slice()
+        .sort((a, b) => order.indexOf(a.to) - order.indexOf(b.to) || a.slot - b.slot)
+        .map(f => "S" + num[f.sid] + " of " + (isMain(f.to) ? (mains.length === 1 ? "the main argument" : name[f.to]) : "the argument for " + label[f.to]));
+      connector[id] = label[id] + " becomes " + parts.join(" and ");
+    });
+    const linkedCount = id => byId[id].supports.filter(s => s.linkedFrom && byId[s.linkedFrom]).length;
+    const chain = order.length > 1 && mains.length === 1 && order.every((id, i) =>
+      (i === order.length - 1 || (feeds[id].length === 1 && feeds[id][0].to === order[i + 1] && feeds[id][0].slot === 0)) && linkedCount(id) === (i === 0 ? 0 : 1));
+    return { order, byId, feeds, isMain, mains, label, num, name, connector, owner, ownerIsTrib, rivalPrefix, chain };
+  }
+
+  function sabLineText(st, s) {
+    if (s.linkedFrom && st.byId[s.linkedFrom]) {
+      const l = st.label[s.linkedFrom];
+      return (st.byId[s.linkedFrom].conclusion || "[" + l + "]") + " [= " + l + "]";
+    }
+    return s.text;
+  }
+
+  function sabRule(width, marker) {
+    return marker === "d" ? "=".repeat(Math.max(1, width - 1)) + "d" : "-".repeat(width);
+  }
+
+  function sabIbeLines(ibe) {
+    if (!ibe) return [];
+    const out = [];
+    if (ibe.iq.trim()) out.push("", ibe.iqHeading + ": " + ibe.iq);
+    const filled = ibe.rivals.filter(r => r.text.trim());
+    if (filled.length) { out.push("", ibe.rivalsHeading); filled.forEach(r => out.push(ibe.prefix + r.n + ". " + r.text)); }
+    return out;
+  }
+
+  function sabStackedGroups(st, markerOf) {
+    const single = st.order.length === 1;
+    return st.order.map(id => {
+      const b = st.byId[id];
+      const lines = b.supports.map(s => ({ label: "S" + st.num[s.id] + ".", text: sabLineText(st, s) }));
+      const concl = { label: st.label[id] + ".", text: b.conclusion };
+      const width = Math.min(SAB_RULE_MAX, Math.max(10, ...[...lines, concl].map(l => (l.label + " " + l.text).length)));
+      return { heading: single ? null : st.name[id], lines, rule: sabRule(width, markerOf(b)), concl, connector: st.connector[id] || null };
+    });
+  }
+
+  function sabStackedText(st, markerOf, ibe) {
+    const out = [];
+    sabStackedGroups(st, markerOf).forEach((g, i) => {
+      if (i > 0) out.push("");
+      if (g.heading) out.push(g.heading);
+      g.lines.forEach(l => out.push(l.label + " " + l.text));
+      out.push(g.rule);
+      out.push(g.concl.label + " " + g.concl.text);
+      if (g.connector) out.push("▼ " + g.connector);
+    });
+    return [...out, ...sabIbeLines(ibe)].join("\n");
+  }
+
+  function sabEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  function sabStackedHtml(st, markerOf, ibe) {
+    const parts = [];
+    sabStackedGroups(st, markerOf).forEach(g => {
+      if (g.heading) parts.push("<p><strong>" + sabEsc(g.heading) + "</strong></p>");
+      const rows = g.lines.map(l => "<strong>" + sabEsc(l.label) + "</strong> " + sabEsc(l.text));
+      rows.push(sabEsc(g.rule));
+      rows.push("<strong>" + sabEsc(g.concl.label) + "</strong> " + sabEsc(g.concl.text));
+      parts.push("<p>" + rows.join("<br>") + "</p>");
+      if (g.connector) parts.push("<p>▼ " + sabEsc(g.connector) + "</p>");
+    });
+    if (ibe) {
+      if (ibe.iq.trim()) parts.push("<p><strong>" + sabEsc(ibe.iqHeading) + ":</strong> " + sabEsc(ibe.iq) + "</p>");
+      const filled = ibe.rivals.filter(r => r.text.trim());
+      if (filled.length) parts.push("<p><strong>" + sabEsc(ibe.rivalsHeading) + "</strong><br>" +
+        filled.map(r => "<strong>" + sabEsc(ibe.prefix + r.n) + ".</strong> " + sabEsc(r.text)).join("<br>") + "</p>");
+    }
+    return parts.join("\n");
+  }
+
+  async function sabCopy(text, htmlText) {
+    try {
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        await navigator.clipboard.write([new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+          "text/html": new Blob([htmlText], { type: "text/html" }),
+        })]);
+        return true;
+      }
+    } catch (err) { /* fall through */ }
+    try {
+      const box = document.createElement("div");
+      box.innerHTML = htmlText;
+      box.style.cssText = "position:fixed;left:-9999px;top:0;";
+      document.body.appendChild(box);
+      const range = document.createRange();
+      range.selectNodeContents(box);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      const ok = document.execCommand("copy");
+      sel.removeAllRanges();
+      document.body.removeChild(box);
+      if (ok) return true;
+    } catch (err) { /* fall through */ }
+    try { await navigator.clipboard.writeText(text); return true; } catch (err) { return false; }
+  }
+  /* ── end of the shared engine ── */
+
+  /* ── The map's data: claims (nodes) and arrows (edges). An arrow has one or more sources: two or
+     more sources make a joint arrow, drawn with a bracket. A claim sends at most one arrow to any
+     given claim. Files saved by the earlier mapper open unchanged. ── */
+  function cleanDoc(doc) {
+    const ids = new Set(doc.nodes.map(n => n.id));
+    const seen = new Set();
+    const edges = [];
+    doc.edges.forEach(ed => {
+      if (!ids.has(ed.target)) return;
+      const sources = [];
+      (ed.sources || []).forEach(s => {
+        const key = ed.target + "|" + s;
+        if (!ids.has(s) || s === ed.target || seen.has(key)) return;
+        seen.add(key);
+        sources.push(s);
+      });
+      if (!sources.length) return;
+      edges.push({ id: ed.id || uid(), sources, target: ed.target, kind: ed.kind === "objects" ? "objects" : "supports" });
+    });
+    return { nodes: doc.nodes, edges };
+  }
+
+  function readDoc(data) {
+    if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) return null;
+    const nodes = data.nodes.filter(n => n && n.id != null).map(n => ({
+      id: String(n.id),
+      text: String(n.text == null ? "" : n.text),
+      x: Number.isFinite(+n.x) ? +n.x : 0,
+      y: Number.isFinite(+n.y) ? +n.y : 0,
+    }));
+    const edges = data.edges.filter(ed => ed && ed.target != null).map(ed => ({
+      id: String(ed.id == null ? uid() : ed.id),
+      sources: Array.isArray(ed.sources) ? ed.sources.map(String) : (ed.source != null ? [String(ed.source)] : []),
+      target: String(ed.target),
+      kind: ed.kind,
+    }));
+    return cleanDoc({ nodes, edges });
+  }
+
+  /* Reads the map as an argument. Only support arrows build the argument: every supported claim
+     is a conclusion, and its supports are its S lines, numbered left to right as they sit on the
+     board. Objections are listed after the argument, with replies under them. */
+  function analyze(doc) {
+    const byId = {};
+    doc.nodes.forEach(n => { byId[n.id] = n; });
+    const supIn = {}, objOut = {}, objIn = {}, touched = new Set(), supportsObjection = new Set();
+    doc.edges.forEach(ed => {
+      touched.add(ed.target);
+      ed.sources.forEach(s => touched.add(s));
+      if (ed.kind === "supports") {
+        const list = supIn[ed.target] || (supIn[ed.target] = []);
+        ed.sources.forEach(s => { if (!list.includes(s)) list.push(s); });
+      } else {
+        ed.sources.forEach(s => {
+          (objOut[s] || (objOut[s] = [])).push(ed.target);
+          (objIn[ed.target] || (objIn[ed.target] = [])).push(s);
+        });
+      }
+    });
+    const isObjector = id => !!objOut[id];
+    Object.keys(supIn).forEach(t => { if (isObjector(t)) supIn[t].forEach(s => supportsObjection.add(s)); });
+    const byPos = (a, b) => byId[a].x - byId[b].x || byId[a].y - byId[b].y;
+    const conclIds = Object.keys(supIn).filter(id => !isObjector(id))
+      .sort((a, b) => byId[a].y - byId[b].y || byId[a].x - byId[b].x);
+    const conclSet = new Set(conclIds);
+    const blocks = conclIds.map(id => ({
+      id,
+      conclusion: byId[id].text,
+      supports: supIn[id].slice().sort(byPos).map(s => ({ id: id + ">" + s, src: s, text: byId[s].text, linkedFrom: conclSet.has(s) ? s : null })),
+    }));
+    const st = blocks.length ? sabStructure(blocks, {}) : null;
+
+    const labels = {};
+    const add = (id, l) => { (labels[id] || (labels[id] = [])).push(l); };
+    if (st) {
+      st.order.forEach(bid => add(bid, st.label[bid]));
+      st.order.forEach(bid => st.byId[bid].supports.forEach(s => add(s.src, "S" + st.num[s.id])));
+    }
+
+    // Support arrows that run in a circle leave no claim standing as the final conclusion.
+    let cycle = false;
+    const state = {};
+    const dfs = id => {
+      state[id] = 1;
+      (supIn[id] || []).forEach(s => {
+        if (!conclSet.has(s)) return;
+        if (state[s] === 1) cycle = true;
+        else if (!state[s]) dfs(s);
+      });
+      state[id] = 2;
+    };
+    conclIds.forEach(id => { if (!state[id]) dfs(id); });
+
+    const role = {}, display = {}, isObj = {};
+    doc.nodes.forEach(n => {
+      const ls = labels[n.id] || [];
+      let r;
+      if (ls.includes("C")) r = "main";
+      else if (ls.some(l => /^C[dp]/.test(l))) r = "trib";
+      else if (ls.length) r = "support";
+      else if (isObjector(n.id)) r = objOut[n.id].every(t => isObjector(t)) ? "reply" : "objection";
+      else if (supportsObjection.has(n.id)) r = "objsupport";
+      else if (touched.has(n.id)) r = "plain";
+      else r = "loose";
+      role[n.id] = r;
+      isObj[n.id] = isObjector(n.id);
+      const word = { objection: "Objection", reply: "Reply", objsupport: "Support" }[r] || "";
+      display[n.id] = ls.length ? ls.join(" · ") + (isObj[n.id] ? " · Objection" : "") : word;
+    });
+
+    const ref = id => (labels[id] && labels[id].length ? labels[id][0] : "“" + clip(byId[id] ? byId[id].text : "", 32) + "”");
+
+    // Objections, in the order of what they object to, each followed by its supports and replies.
+    const rank = id => {
+      const ls = labels[id] || [];
+      const s = ls.find(l => /^S\d+$/.test(l));
+      if (s) return +s.slice(1);
+      const cd = ls.find(l => /^C[dp]\d+$/.test(l));
+      if (cd) return 1000 + +cd.slice(2);
+      if (ls.includes("C")) return 2000;
+      return 3000 + (byId[id] ? byId[id].y : 0);
+    };
+    const objLines = [];
+    const done = new Set();
+    const emit = (o, target, depth) => {
+      const key = o + ">" + target;
+      if (done.has(key)) return;
+      done.add(key);
+      objLines.push({ depth, head: depth === 0 ? "Objection to " + ref(target) : "Reply", text: byId[o].text });
+      (supIn[o] || []).slice().sort(byPos).forEach(s => objLines.push({ depth: depth + 1, head: "Support", text: byId[s].text }));
+      (objIn[o] || []).slice().sort(byPos).forEach(r => emit(r, o, depth + 1));
+    };
+    const pairs = [];
+    Object.keys(objOut).forEach(o => objOut[o].forEach(t => pairs.push([o, t])));
+    pairs.filter(([, t]) => !isObjector(t))
+      .sort((a, b) => rank(a[1]) - rank(b[1]) || byPos(a[0], b[0]))
+      .forEach(([o, t]) => emit(o, t, 0));
+    pairs.forEach(([o, t]) => emit(o, t, 0)); // objections that only answer each other
+
+    let text = st ? sabStackedText(st, () => "", null) : "";
+    let htmlOut = st ? sabStackedHtml(st, () => "", null) : "";
+    if (objLines.length) {
+      const lines = objLines.map(l => "  ".repeat(l.depth) + l.head + ": " + l.text);
+      text += (text ? "\n\n" : "") + "Objections\n" + lines.join("\n");
+      htmlOut += (htmlOut ? "\n" : "") + "<p><strong>Objections</strong><br>" +
+        objLines.map(l => "&nbsp;&nbsp;".repeat(l.depth) + "<strong>" + sabEsc(l.head) + ":</strong> " + sabEsc(l.text)).join("<br>") + "</p>";
+    }
+
+    const loose = doc.nodes.filter(n => !touched.has(n.id)).length;
+    const notes = [];
+    if (loose) notes.push({ warn: false, text: loose + " " + plural(loose, "claim is", "claims are") + " not connected yet, so " + plural(loose, "it is", "they are") + " left out." });
+    if (cycle) notes.push({ warn: true, text: "Some support arrows run in a circle, so no claim stands as the final conclusion. Check which way each arrow points." });
+    if (st && st.mains.length > 1 && !cycle) notes.push({ warn: false, text: "The map holds " + st.mains.length + " separate arguments, so each has its own C." });
+    if (doc.edges.some(ed => ed.kind === "supports" && ed.sources.length > 1)) notes.push({ warn: false, text: "Joined supports print as separate S lines in the argument they support." });
+
+    return { byId, labels, role, display, isObj, ref, text, html: htmlOut, notes, st };
+  }
+
+  function describeEdge(an, ed) {
+    const srcs = ed.sources.map(an.ref);
+    const list = srcs.length === 1 ? srcs[0] : srcs.slice(0, -1).join(", ") + " and " + srcs[srcs.length - 1];
+    if (ed.kind === "objects") return list + (srcs.length > 1 ? " object to " : " objects to ") + an.ref(ed.target);
+    return list + (srcs.length > 1 ? " support " : " supports ") + an.ref(ed.target) + (srcs.length > 1 ? " together" : "");
+  }
+
+  var ROLE_WORD = {
+    main: "Conclusion", trib: "Tributary conclusion", support: "Support", objection: "Objection",
+    reply: "Reply", objsupport: "Support for an objection", plain: "Claim", loose: "Claim, not connected yet",
+  };
+
+  /* ── Geometry, shared by the board and the PNG export. ── */
+  function boxOf(n, h) { return { x: n.x, y: n.y, w: NODE_W, h: h }; }
+  function centerOf(b) { return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; }
+  function edgePoint(b, tx, ty, gap) {
+    const c = centerOf(b), dx = tx - c.x, dy = ty - c.y;
+    if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) return c;
+    const s = Math.min(dx ? (b.w / 2 + gap) / Math.abs(dx) : Infinity, dy ? (b.h / 2 + gap) / Math.abs(dy) : Infinity);
+    return { x: c.x + dx * s, y: c.y + dy * s };
+  }
+  function arrowHead(from, to) {
+    const dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+    const bx = to.x - ux * HEAD_L, by = to.y - uy * HEAD_L;
+    return { pts: [[to.x, to.y], [bx - uy * HEAD_W, by + ux * HEAD_W], [bx + uy * HEAD_W, by - ux * HEAD_W]], base: { x: bx + ux, y: by + uy } };
+  }
+  function groupBox(ids, byId, getH) {
+    const bs = ids.map(id => byId[id]).filter(Boolean).map(n => boxOf(n, getH(n.id)));
+    if (!bs.length) return null;
+    const x = Math.min(...bs.map(b => b.x)) - GROUP_PAD, y = Math.min(...bs.map(b => b.y)) - GROUP_PAD;
+    const x2 = Math.max(...bs.map(b => b.x + b.w)) + GROUP_PAD, y2 = Math.max(...bs.map(b => b.y + b.h)) + GROUP_PAD;
+    return { x, y, w: x2 - x, h: y2 - y };
+  }
+  function bracketPts(g, fromTop) {
+    const arm = Math.min(g.h * 0.35, 28);
+    return fromTop
+      ? [[g.x, g.y + arm], [g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + arm]]
+      : [[g.x, g.y + g.h - arm], [g.x, g.y + g.h], [g.x + g.w, g.y + g.h], [g.x + g.w, g.y + g.h - arm]];
+  }
+  function edgeGeom(ed, byId, getH) {
+    const tgt = byId[ed.target];
+    const srcs = ed.sources.filter(s => byId[s]);
+    if (!tgt || !srcs.length) return null;
+    const tb = boxOf(tgt, getH(tgt.id)), tc = centerOf(tb);
+    let start, end, bracket = null;
+    if (srcs.length === 1) {
+      const sb = boxOf(byId[srcs[0]], getH(srcs[0])), sc = centerOf(sb);
+      start = edgePoint(sb, tc.x, tc.y, 2);
+      end = edgePoint(tb, sc.x, sc.y, 4);
+    } else {
+      const g = groupBox(srcs, byId, getH);
+      const fromTop = tc.y <= g.y + g.h / 2;
+      start = { x: g.x + g.w / 2, y: fromTop ? g.y : g.y + g.h };
+      end = edgePoint(tb, start.x, start.y, 4);
+      bracket = bracketPts(g, fromTop);
+    }
+    const hd = arrowHead(start, end);
+    return { start, base: hd.base, head: hd.pts, mid: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }, bracket, len: Math.hypot(end.x - start.x, end.y - start.y) };
+  }
+  function ptsAttr(pts) { return pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" "); }
+
+  /* A free spot for a new claim: near the middle of the view, inside it if there is room, below or
+     beside the others rather than on top of them. */
+  function findSpot(nodes, cx, cy, getH, view) {
+    const free = (x, y) => nodes.every(n => x + NODE_W + 16 < n.x || n.x + NODE_W + 16 < x || y + NODE_MIN_H + 16 < n.y || n.y + getH(n.id) + 16 < y);
+    const inView = (x, y) => !view || (x >= view.x0 && y >= view.y0 && x + NODE_W <= view.x1 && y + NODE_MIN_H <= view.y1);
+    const spots = [];
+    for (let i = -10; i <= 10; i++) for (let j = -12; j <= 12; j++) {
+      spots.push({ x: cx + i * 128, y: cy + j * 50, cost: Math.abs(i) * 0.5 + Math.abs(j) * 0.4 + (j < 0 ? 0.3 : 0) + (i < 0 ? 0.1 : 0) });
+    }
+    spots.sort((a, b) => a.cost - b.cost);
+    const hit = spots.find(p => inView(p.x, p.y) && free(p.x, p.y)) || spots.find(p => free(p.x, p.y));
+    return hit || { x: cx + (Math.random() - 0.5) * 120, y: cy + (Math.random() - 0.5) * 80 };
+  }
+
+  function downloadBlob(name, blob) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  /* The PNG is drawn from the map itself, not copied from the screen, so the whole map comes out
+     however far it is zoomed or scrolled, always in the light theme. */
+  async function exportPng(doc, an) {
+    try { await Promise.all([document.fonts.load('16px "Source Serif 4"'), document.fonts.load('500 11px "Overpass Mono"')]); } catch (err) { /* draw with fallbacks */ }
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const TEXT = '16px "Source Serif 4", Georgia, serif', LABEL = '500 11px "Overpass Mono", monospace';
+    const LH = 22.4, PADX = 12, PADY = 9, LABEL_H = 17, INNER = NODE_W - PADX * 2 - 2;
+    ctx.font = TEXT;
+    const wrap = text => {
+      const out = [];
+      String(text).split("\n").forEach(par => {
+        let line = "";
+        par.split(/\s+/).filter(Boolean).forEach(word => {
+          const tryLine = line ? line + " " + word : word;
+          if (ctx.measureText(tryLine).width <= INNER) { line = tryLine; return; }
+          if (line) out.push(line);
+          line = word;
+          while (ctx.measureText(line).width > INNER && line.length > 1) {
+            let k = line.length - 1;
+            while (k > 1 && ctx.measureText(line.slice(0, k)).width > INNER) k--;
+            out.push(line.slice(0, k));
+            line = line.slice(k);
+          }
+        });
+        out.push(line);
+      });
+      return out;
+    };
+    const lay = {};
+    doc.nodes.forEach(n => {
+      const lines = wrap(n.text);
+      const lab = an.display[n.id];
+      const border = an.role[n.id] === "main" ? 2 : 1;
+      lay[n.id] = { lines, lab, h: Math.max(NODE_MIN_H, PADY * 2 + border * 2 + (lab ? LABEL_H : 0) + lines.length * LH) };
+    });
+    const getH = id => (lay[id] ? lay[id].h : NODE_MIN_H);
+    const geoms = doc.edges.map(ed => ({ ed, g: edgeGeom(ed, an.byId, getH) })).filter(x => x.g);
+    const xs = [], ys = [];
+    doc.nodes.forEach(n => { xs.push(n.x, n.x + NODE_W); ys.push(n.y, n.y + getH(n.id)); });
+    geoms.forEach(({ g }) => { (g.bracket || []).forEach(p => { xs.push(p[0]); ys.push(p[1]); }); xs.push(g.start.x); ys.push(g.start.y, g.mid.y - 12); });
+    const M = 32;
+    const minX = Math.min(...xs) - M, minY = Math.min(...ys) - M;
+    const w = Math.max(...xs) + M - minX, h = Math.max(...ys) + M - minY;
+    const S = Math.min(2, 16000 / Math.max(w, h));
+    canvas.width = Math.ceil(w * S);
+    canvas.height = Math.ceil(h * S);
+    ctx.scale(S, S);
+    ctx.translate(-minX, -minY);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(minX, minY, w, h);
+    const INK = "#151515", BRICK = "#8c2f24", NAVY = "#173a63", GRAPHITE = "#575853", EDGE = "#7a786f", CARD = "#f3f0e8";
+    geoms.forEach(({ ed, g }) => {
+      const color = ed.kind === "objects" ? BRICK : INK;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash(ed.kind === "objects" ? [7, 5] : []);
+      if (g.bracket) {
+        ctx.beginPath();
+        g.bracket.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(g.start.x, g.start.y);
+      ctx.lineTo(g.base.x, g.base.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      g.head.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.closePath();
+      ctx.fill();
+      if (ed.kind === "objects" && g.len >= 96) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(g.mid.x - 38, g.mid.y - 9, 76, 18);
+        ctx.fillStyle = color;
+        ctx.font = LABEL;
+        ctx.textAlign = "center";
+        ctx.fillText("objects to", g.mid.x, g.mid.y + 4);
+        ctx.textAlign = "left";
+      }
+    });
+    doc.nodes.forEach(n => {
+      const L = lay[n.id], r = an.role[n.id], obj = an.isObj[n.id];
+      const bw = r === "main" ? 2 : 1;
+      ctx.fillStyle = CARD;
+      ctx.fillRect(n.x, n.y, NODE_W, L.h);
+      ctx.lineWidth = bw;
+      ctx.strokeStyle = obj ? BRICK : (r === "main" || r === "trib" ? INK : EDGE);
+      ctx.setLineDash(obj ? [5, 3] : []);
+      ctx.strokeRect(n.x + bw / 2, n.y + bw / 2, NODE_W - bw, L.h - bw);
+      ctx.setLineDash([]);
+      let y = n.y + bw + PADY;
+      if (L.lab) {
+        ctx.font = LABEL;
+        ctx.fillStyle = obj || r === "objection" || r === "reply" ? BRICK : (r === "objsupport" ? GRAPHITE : NAVY);
+        ctx.fillText(L.lab, n.x + bw + PADX, y + 11);
+        y += LABEL_H;
+      }
+      ctx.font = TEXT;
+      ctx.fillStyle = INK;
+      L.lines.forEach((line, i) => ctx.fillText(line, n.x + bw + PADX, y + 16 + i * LH));
+    });
+    await new Promise(resolve => canvas.toBlob(blob => { if (blob) downloadBlob("argument-map.png", blob); resolve(); }, "image/png"));
+  }
+
+  function loadSaved() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const doc = readDoc(data);
+      if (!doc) return null;
+      const vp = data.vp && [data.vp.x, data.vp.y, data.vp.scale].every(Number.isFinite) ? data.vp : null;
+      return { doc, vp, snap: !!data.snap };
+    } catch (err) { return null; }
+  }
+  var SAVED = loadSaved();
+  var COARSE = (function () { try { return window.matchMedia("(pointer: coarse)").matches; } catch (err) { return false; } })();
+
+  var Arrow = props => html`<svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true" focusable="false">
+    <line x1="0" y1="5" x2="13" y2="5" stroke="currentColor" strokeWidth="1.8" strokeDasharray=${props.dashed ? "4 3" : null} />
+    <polygon points="13,1.5 20,5 13,8.5" fill="currentColor" /></svg>`;
+
+  function App() {
+    const [doc, setDocState] = useState(() => (SAVED ? SAVED.doc : { nodes: [], edges: [] }));
+    const docRef = useRef(doc);
+    const setDoc = next => { docRef.current = next; setDocState(next); };
+    const past = useRef([]), future = useRef([]);
+    const [, setTick] = useState(0);
+    const bump = () => setTick(t => t + 1);
+
+    const [vp, setVpState] = useState(() => (SAVED && SAVED.vp ? SAVED.vp : { x: 40, y: 40, scale: 1 }));
+    const vpRef = useRef(vp);
+    const setVp = v => { const nv = typeof v === "function" ? v(vpRef.current) : v; vpRef.current = nv; setVpState(nv); };
+
+    const [mode, setMode] = useState("select");
+    const [edgeKind, setEdgeKind] = useState("supports");
+    const [source, setSource] = useState(null);
+    const [chosen, setChosen] = useState([]);
+    const [sel, setSel] = useState(null);
+    const [multi, setMulti] = useState([]);
+    const [editing, setEditing] = useState(null);
+    const [editText, setEditText] = useState("");
+    const [heights, setHeights] = useState({});
+    const heightsRef = useRef(heights);
+    heightsRef.current = heights;
+    const [snap, setSnap] = useState(SAVED ? SAVED.snap : false);
+    const [draft, setDraft] = useState("");
+    const [live, setLive] = useState("");
+    const [box, setBox] = useState(null);
+    const [confirm, setConfirm] = useState(null);
+    const [copied, setCopied] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [newKind, setNewKind] = useState("supports");
+    const [newTarget, setNewTarget] = useState("");
+    const [storageOk, setStorageOk] = useState(true);
+    const [panning, setPanning] = useState(false);
+
+    const boardRef = useRef(null), fileRef = useRef(null), dialogRef = useRef(null), addRef = useRef(null);
+    const gesture = useRef(null), pointers = useRef(new Map()), suppressClick = useRef(false);
+    const moveStamp = useRef(0), sideEditStart = useRef(null), editClosed = useRef(false);
+
+    const an = useMemo(() => analyze(doc), [doc]);
+    const getH = id => heightsRef.current[id] || NODE_MIN_H;
+    const announce = msg => setLive(m => (m === msg ? msg + " " : msg));
+    const snapV = v => (snap ? Math.round(v / GRID) * GRID : Math.round(v));
+
+    useEffect(() => { window.amFeedbackText = an.text || doc.nodes.map(n => n.text).join("\n"); }, [an, doc]);
+
+    // The map, the view and the snap setting stay in this browser between visits.
+    useEffect(() => {
+      const t = setTimeout(() => {
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, nodes: doc.nodes, edges: doc.edges, vp, snap }));
+          if (!storageOk) setStorageOk(true);
+        } catch (err) { setStorageOk(false); }
+      }, 250);
+      return () => clearTimeout(t);
+    }, [doc, vp, snap]);
+
+    /* ── history ── */
+    const commit = (next, msg) => {
+      const prev = docRef.current;
+      if (next === prev) return false;
+      past.current = past.current.slice(-79).concat([prev]);
+      future.current = [];
+      setDoc(next);
+      bump();
+      if (msg) announce(typeof msg === "function" ? msg(analyze(next)) : msg);
+      return true;
+    };
+    const pushPast = prev => { past.current = past.current.slice(-79).concat([prev]); future.current = []; bump(); };
+    const dropStale = d => {
+      setSel(s => (s && (s.type === "node" ? d.nodes.some(n => n.id === s.id) : d.edges.some(x => x.id === s.id)) ? s : null));
+      setMulti(m => m.filter(id => d.nodes.some(n => n.id === id)));
+      setChosen(c => c.filter(id => d.nodes.some(n => n.id === id)));
+      setSource(s => (s && d.nodes.some(n => n.id === s) ? s : null));
+    };
+    const undo = () => {
+      if (!past.current.length) return;
+      const prev = past.current.pop();
+      future.current.push(docRef.current);
+      setDoc(prev); dropStale(prev); bump();
+      announce("Undone.");
+    };
+    const redo = () => {
+      if (!future.current.length) return;
+      const next = future.current.pop();
+      past.current.push(docRef.current);
+      setDoc(next); dropStale(next); bump();
+      announce("Redone.");
     };
 
-    const ROLE_STYLE = {
-      Conclusion:    { bg: '#fffbeb', accent: '#f59e0b', label: 'Conclusion'    },
-      Subconclusion: { bg: '#f0f9ff', accent: '#0ea5e9', label: 'Subconclusion' },
-      Premise:       { bg: '#f8fafc', accent: '#94a3b8', label: 'Premise'       },
-      null:          { bg: '#ffffff', accent: '#e2e8f0', label: null             },
+    /* ── view ── */
+    const toCanvas = (cx, cy) => {
+      const r = boardRef.current.getBoundingClientRect(), v = vpRef.current;
+      return { x: (cx - r.left - v.x) / v.scale, y: (cy - r.top - v.y) / v.scale };
+    };
+    const zoomAt = (factor, px, py) => setVp(p => {
+      const s = clamp(p.scale * factor, ZOOM_MIN, ZOOM_MAX), k = s / p.scale;
+      return { scale: s, x: px - (px - p.x) * k, y: py - (py - p.y) * k };
+    });
+    const zoomBy = f => { const r = boardRef.current.getBoundingClientRect(); zoomAt(f, r.width / 2, r.height / 2); };
+    const resetZoom = () => { const r = boardRef.current.getBoundingClientRect(); zoomAt(1 / vpRef.current.scale, r.width / 2, r.height / 2); };
+    const fit = () => {
+      const ns = docRef.current.nodes;
+      if (!ns.length || !boardRef.current) return;
+      const r = boardRef.current.getBoundingClientRect();
+      const minX = Math.min(...ns.map(n => n.x)) - 40, minY = Math.min(...ns.map(n => n.y)) - 40;
+      const maxX = Math.max(...ns.map(n => n.x + NODE_W)) + 40, maxY = Math.max(...ns.map(n => n.y + getH(n.id))) + 40;
+      const s = clamp(Math.min(r.width / (maxX - minX), r.height / (maxY - minY)), ZOOM_MIN, 1.5);
+      setVp({ scale: s, x: (r.width - (maxX - minX) * s) / 2 - minX * s, y: (r.height - (maxY - minY) * s) / 2 - minY * s });
+    };
+    const ensureVisible = id => {
+      const n = docRef.current.nodes.find(x => x.id === id), el = boardRef.current;
+      if (!n || !el) return;
+      const r = el.getBoundingClientRect(), v = vpRef.current, m = 20;
+      const w = NODE_W * v.scale, h = getH(id) * v.scale, sx = n.x * v.scale + v.x, sy = n.y * v.scale + v.y;
+      let nx = v.x, ny = v.y;
+      if (sx < m) nx += m - sx; else if (sx + w > r.width - m) nx -= Math.min(sx + w - (r.width - m), sx - m);
+      if (sy < m) ny += m - sy; else if (sy + h > r.height - m) ny -= Math.min(sy + h - (r.height - m), sy - m);
+      if (nx !== v.x || ny !== v.y) setVp({ scale: v.scale, x: nx, y: ny });
     };
 
-    function deriveRole(nodeId, edges) {
-      const hasOut = edges.some(e => e.sources && e.sources.includes(nodeId));
-      const hasIn  = edges.some(e => e.target === nodeId);
-      if (hasOut && !hasIn)  return 'Premise';
-      if (hasIn  && !hasOut) return 'Conclusion';
-      if (hasIn  &&  hasOut) return 'Subconclusion';
-      return null;
-    }
-
-    let _id = 1;
-    const uid = () => `n${_id++}`;
-
-    function nodeCenter(node) {
-      return { x: node.x + NODE_W / 2, y: node.y + NODE_H / 2 };
-    }
-
-    function rectEdgePoint(node, tx, ty) {
-      const cx = node.x + NODE_W / 2, cy = node.y + NODE_H / 2;
-      const dx = tx - cx, dy = ty - cy;
-      if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return { x: cx, y: cy };
-      const scale = Math.min(
-        dx !== 0 ? (NODE_W / 2 + 8) / Math.abs(dx) : Infinity,
-        dy !== 0 ? (NODE_H / 2 + 8) / Math.abs(dy) : Infinity
-      );
-      return { x: cx + dx * scale, y: cy + dy * scale };
-    }
-
-    function groupBBox(nodeIds, nodes) {
-      const ns = nodeIds.map(id => nodes.find(n => n.id === id)).filter(Boolean);
-      if (!ns.length) return null;
-      return {
-        x: Math.min(...ns.map(n => n.x)) - PAD,
-        y: Math.min(...ns.map(n => n.y)) - PAD,
-        w: Math.max(...ns.map(n => n.x + NODE_W)) + PAD - (Math.min(...ns.map(n => n.x)) - PAD),
-        h: Math.max(...ns.map(n => n.y + NODE_H)) + PAD - (Math.min(...ns.map(n => n.y)) - PAD),
+    // Pinch (Ctrl + scroll on a trackpad or wheel) zooms; a plain scroll still scrolls the page.
+    useEffect(() => {
+      const el = boardRef.current;
+      const onWheel = ev => {
+        if (!(ev.ctrlKey || ev.metaKey)) return;
+        ev.preventDefault();
+        const r = el.getBoundingClientRect();
+        const d = clamp(ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY, -30, 30);
+        zoomAt(Math.exp(-d * 0.008), ev.clientX - r.left, ev.clientY - r.top);
       };
+      let g0 = 1;
+      const gs = ev => { ev.preventDefault(); g0 = vpRef.current.scale; };
+      const gc = ev => {
+        ev.preventDefault();
+        const r = el.getBoundingClientRect();
+        const px = ev.clientX != null ? ev.clientX - r.left : r.width / 2, py = ev.clientY != null ? ev.clientY - r.top : r.height / 2;
+        zoomAt(clamp(g0 * ev.scale, ZOOM_MIN, ZOOM_MAX) / vpRef.current.scale, px, py);
+      };
+      el.addEventListener("wheel", onWheel, { passive: false });
+      el.addEventListener("gesturestart", gs);
+      el.addEventListener("gesturechange", gc);
+      return () => {
+        el.removeEventListener("wheel", onWheel);
+        el.removeEventListener("gesturestart", gs);
+        el.removeEventListener("gesturechange", gc);
+      };
+    }, []);
+
+    /* ── card heights: arrows attach to each card's real edge ── */
+    const ro = useRef(null);
+    if (!ro.current && typeof ResizeObserver !== "undefined") {
+      ro.current = new ResizeObserver(entries => setHeights(prev => {
+        let next = prev;
+        entries.forEach(en => {
+          const id = en.target.getAttribute("data-node"), h = en.target.offsetHeight;
+          if (id && prev[id] !== h) { if (next === prev) next = Object.assign({}, prev); next[id] = h; }
+        });
+        return next;
+      }));
     }
+    const cardEls = useRef({}), refFns = useRef({});
+    const cardRef = id => refFns.current[id] || (refFns.current[id] = el => {
+      const old = cardEls.current[id];
+      if (old === el) return;
+      if (old && ro.current) ro.current.unobserve(old);
+      if (el) { cardEls.current[id] = el; if (ro.current) ro.current.observe(el); }
+      else delete cardEls.current[id];
+    });
+    const focusCard = id => requestAnimationFrame(() => { const el = cardEls.current[id]; if (el) el.focus({ preventScroll: true }); });
 
-    function edgeMidpoint(edge, nodes) {
-      if (edge.targetEdge) return null;
-      if (edge.sources.length === 1) {
-        const src = nodes.find(n => n.id === edge.sources[0]);
-        const tgt = nodes.find(n => n.id === edge.target);
-        if (!src || !tgt) return null;
-        const start = rectEdgePoint(src, nodeCenter(tgt).x, nodeCenter(tgt).y);
-        const end   = rectEdgePoint(tgt, nodeCenter(src).x, nodeCenter(src).y);
-        return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    /* ── modes ── */
+    const MODE_NAME = { select: "Select", connect: edgeKind === "supports" ? "Supports" : "Objects to", join: "Join supports", "join-target": "Join supports", delete: "Delete" };
+    const hint = () => {
+      const verb = edgeKind === "supports" ? "supports" : "objects to";
+      if (mode === "connect") return source ? "Now choose the claim it " + verb + "." : "Choose the claim the arrow starts from: the " + (edgeKind === "supports" ? "reason." : "objection.");
+      if (mode === "join") return chosen.length < 2 ? "Choose the supports that work together (" + chosen.length + " chosen)." : chosen.length + " chosen. Choose more, or press Next.";
+      if (mode === "join-target") return "Choose the claim they support together.";
+      if (mode === "delete") return "Choose a claim or an arrow to delete.";
+      if (multi.length > 1) return multi.length + " claims selected. Drag one to move them all.";
+      return COARSE ? "Drag a claim to move it. Drag the board to look around. Pinch to zoom."
+        : "Drag a claim to move it. Drag the board to look around. Shift + drag selects several. Pinch or Ctrl + scroll zooms.";
+    };
+    const switchMode = (m, kind) => {
+      setMode(m);
+      if (kind) setEdgeKind(kind);
+      setSource(null); setChosen([]); setBox(null);
+      if (m !== "select") { setSel(null); setMulti([]); }
+      const k = kind || edgeKind;
+      announce(m === "connect" ? (k === "supports" ? "Supports: choose the reason, then the claim it supports." : "Objects to: choose the objection, then the claim it objects to.")
+        : m === "join" ? "Join supports: choose the supports that work together, then press Next."
+        : m === "delete" ? "Delete: choose a claim or an arrow." : "Select.");
+    };
+    const cancelModes = () => { setMode("select"); setSource(null); setChosen([]); setBox(null); };
+
+    /* ── editing the map ── */
+    const addClaim = () => {
+      const text = draft.trim();
+      if (!text) return;
+      const r = boardRef.current.getBoundingClientRect(), v = vpRef.current;
+      const view = { x0: (12 - v.x) / v.scale, y0: (12 - v.y) / v.scale, x1: (r.width - 12 - v.x) / v.scale, y1: (r.height - 12 - v.y) / v.scale };
+      const cx = Math.max(view.x0, (r.width / 2 - v.x) / v.scale - NODE_W / 2), cy = (r.height / 3 - v.y) / v.scale - NODE_MIN_H / 2;
+      const spot = findSpot(docRef.current.nodes, cx, cy, getH, view);
+      const node = { id: uid(), text, x: snapV(spot.x), y: snapV(spot.y) };
+      commit({ nodes: docRef.current.nodes.concat([node]), edges: docRef.current.edges }, "Claim added to the board.");
+      setDraft("");
+      cancelModes();
+      setMulti([]);
+      setSel({ type: "node", id: node.id });
+      setNewTarget("");
+      requestAnimationFrame(() => ensureVisible(node.id));
+    };
+
+    const addArrow = (kind, src, tgt) => {
+      if (!src || !tgt || src === tgt) return;
+      const prev = docRef.current;
+      const ex = prev.edges.find(x => x.target === tgt && x.sources.includes(src));
+      if (ex) {
+        if (ex.kind === kind) { announce("That arrow is already on the map."); return; }
+        const edges = ex.sources.length === 1
+          ? prev.edges.map(x => (x === ex ? Object.assign({}, x, { kind }) : x))
+          : prev.edges.map(x => (x === ex ? Object.assign({}, x, { sources: x.sources.filter(s => s !== src) }) : x)).concat([{ id: uid(), sources: [src], target: tgt, kind }]);
+        commit(cleanDoc({ nodes: prev.nodes, edges }), a => "Arrow changed: " + a.ref(src) + (kind === "supports" ? " supports " : " objects to ") + a.ref(tgt) + ".");
+        return;
       }
-      const bbox = groupBBox(edge.sources, nodes);
-      const tgt  = nodes.find(n => n.id === edge.target);
-      if (!bbox || !tgt) return null;
-      const ax = bbox.x + bbox.w / 2;
-      const fromTop = (tgt.y + NODE_H / 2) <= (bbox.y + bbox.h / 2);
-      const ay_bracket = fromTop ? bbox.y : bbox.y + bbox.h;
-      const end2 = rectEdgePoint(tgt, ax, ay_bracket);
-      const ay = fromTop ? Math.max(ay_bracket, end2.y + 34) : Math.min(ay_bracket, end2.y - 34);
-      return { x: (ax + end2.x) / 2, y: (ay + end2.y) / 2 };
-    }
+      commit(cleanDoc({ nodes: prev.nodes, edges: prev.edges.concat([{ id: uid(), sources: [src], target: tgt, kind }]) }),
+        a => "Arrow added: " + a.ref(src) + (kind === "supports" ? " supports " : " objects to ") + a.ref(tgt) + ".");
+    };
 
-    // ── Edge SVG ──────────────────────────────────────────────────────────────
-    function EdgeSVG({ edge, nodes, edges, selected, onClick }) {
-      const cfg      = EDGE_KINDS[edge.kind] || EDGE_KINDS.supports;
-      const color    = selected ? '#f59e0b' : cfg.stroke;
-      const dash     = selected ? 'none'    : cfg.dash;
-      const markerId = `arr-${edge.kind}${selected ? '-sel' : ''}`;
+    const joinArrow = (members, tgt) => {
+      const prev = docRef.current;
+      const ms = members.filter(m => m !== tgt);
+      if (ms.length < 2) return;
+      const edges = prev.edges.map(x => (x.target === tgt ? Object.assign({}, x, { sources: x.sources.filter(s => !ms.includes(s)) }) : x))
+        .concat([{ id: uid(), sources: ms, target: tgt, kind: "supports" }]);
+      commit(cleanDoc({ nodes: prev.nodes, edges }), a => "Joint arrow added: " + ms.map(a.ref).join(" and ") + " support " + a.ref(tgt) + " together.");
+    };
 
-      // Rebuttal-to-inference
-      if (edge.targetEdge) {
-        const tgtEdge = (edges || []).find(e => e.id === edge.targetEdge);
-        const src     = nodes.find(n => n.id === edge.sources[0]);
-        if (!tgtEdge || !src) return null;
-        const mid = edgeMidpoint(tgtEdge, nodes);
-        if (!mid) return null;
-        const start    = rectEdgePoint(src, mid.x, mid.y);
-        const rebColor = selected ? '#f59e0b' : '#dc2626';
-        return (
-          <g onClick={onClick} style={{ cursor: 'pointer' }}>
-            <line x1={start.x} y1={start.y} x2={mid.x} y2={mid.y} stroke="transparent" strokeWidth={14} />
-            <line x1={start.x} y1={start.y} x2={mid.x} y2={mid.y}
-              stroke={rebColor} strokeWidth={selected ? 2.5 : 1.8}
-              strokeDasharray="7,4" markerEnd={`url(#arr-rebukes${selected ? '-sel' : ''})`} />
-            <circle cx={mid.x} cy={mid.y} r={4.5} fill="#fff" stroke={rebColor} strokeWidth={1.5}
-              style={{ pointerEvents: 'none' }} />
-          </g>
-        );
+    const addToJoint = (edgeId, src) => {
+      const prev = docRef.current, ed = prev.edges.find(x => x.id === edgeId);
+      if (!ed || !src || src === ed.target || ed.sources.includes(src)) return;
+      const edges = prev.edges.map(x => (x.id === edgeId ? Object.assign({}, x, { sources: x.sources.concat([src]) })
+        : x.target === ed.target ? Object.assign({}, x, { sources: x.sources.filter(s => s !== src) }) : x));
+      commit(cleanDoc({ nodes: prev.nodes, edges }), a => "Joined: " + a.ref(src) + " now supports " + a.ref(ed.target) + " together with " + ed.sources.map(a.ref).join(" and ") + ".");
+    };
+
+    const separate = (edgeId, src) => {
+      const prev = docRef.current, ed = prev.edges.find(x => x.id === edgeId);
+      if (!ed || ed.sources.length < 2) return;
+      const edges = prev.edges.map(x => (x.id === edgeId ? Object.assign({}, x, { sources: x.sources.filter(s => s !== src) }) : x))
+        .concat([{ id: uid(), sources: [src], target: ed.target, kind: ed.kind }]);
+      commit(cleanDoc({ nodes: prev.nodes, edges }), a => a.ref(src) + " now has its own arrow to " + a.ref(ed.target) + ".");
+    };
+
+    const switchKind = edgeId => {
+      const prev = docRef.current, ed = prev.edges.find(x => x.id === edgeId);
+      if (!ed || ed.sources.length > 1) return;
+      const kind = ed.kind === "supports" ? "objects" : "supports";
+      commit(cleanDoc({ nodes: prev.nodes, edges: prev.edges.map(x => (x.id === edgeId ? Object.assign({}, x, { kind }) : x)) }),
+        a => "Arrow changed: " + describeEdge(a, Object.assign({}, ed, { kind })) + ".");
+    };
+
+    const removeEdge = edgeId => {
+      const prev = docRef.current, ed = prev.edges.find(x => x.id === edgeId);
+      if (!ed) return;
+      const desc = describeEdge(an, ed);
+      commit({ nodes: prev.nodes, edges: prev.edges.filter(x => x.id !== edgeId) }, "Arrow removed: " + desc + ". Undo puts it back.");
+      setSel(s => (s && s.type === "edge" && s.id === edgeId ? null : s));
+    };
+
+    const doDelete = ids => {
+      const prev = docRef.current;
+      const next = cleanDoc({
+        nodes: prev.nodes.filter(n => !ids.includes(n.id)),
+        edges: prev.edges.filter(x => !ids.includes(x.target)).map(x => Object.assign({}, x, { sources: x.sources.filter(s => !ids.includes(s)) })),
+      });
+      commit(next, ids.length === 1 ? "Claim deleted. Undo puts it back." : ids.length + " claims deleted. Undo puts them back.");
+      dropStale(next);
+      setSel(null);
+      setMulti([]);
+      if (boardRef.current && (document.activeElement === document.body || !document.contains(document.activeElement) || (document.activeElement && document.activeElement.closest(".am-card")))) boardRef.current.focus({ preventScroll: true });
+    };
+    const deleteNodes = ids => { if (ids.length > 1) setConfirm({ kind: "many", ids }); else doDelete(ids); };
+
+    const moveNodes = (ids, dx, dy) => {
+      const prev = docRef.current, now = Date.now();
+      if (now - moveStamp.current > 800) pushPast(prev);
+      moveStamp.current = now;
+      setDoc({ nodes: prev.nodes.map(n => (ids.includes(n.id) ? Object.assign({}, n, { x: snapV(n.x + dx), y: snapV(n.y + dy) }) : n)), edges: prev.edges });
+      ensureVisible(ids[0]);
+    };
+
+    const startEdit = id => {
+      const n = docRef.current.nodes.find(x => x.id === id);
+      if (!n) return;
+      editClosed.current = false;
+      setEditing(id);
+      setEditText(n.text);
+    };
+    const finishEdit = save => {
+      const id = editing;
+      if (!id || editClosed.current) return;
+      editClosed.current = true;
+      setEditing(null);
+      const t = editText.trim();
+      const prev = docRef.current, n = prev.nodes.find(x => x.id === id);
+      if (save && t && n && n.text !== t) commit({ nodes: prev.nodes.map(x => (x.id === id ? Object.assign({}, x, { text: t }) : x)), edges: prev.edges }, "Claim text saved.");
+      else if (!save) announce("Edit cancelled.");
+      focusCard(id);
+    };
+
+    const sideText = (id, value) => {
+      const prev = docRef.current;
+      setDoc({ nodes: prev.nodes.map(x => (x.id === id ? Object.assign({}, x, { text: value }) : x)), edges: prev.edges });
+    };
+    const sideTextDone = id => {
+      const start = sideEditStart.current;
+      sideEditStart.current = null;
+      if (!start) return;
+      const cur = docRef.current, n = cur.nodes.find(x => x.id === id), old = start.nodes.find(x => x.id === id);
+      if (!n || !old) return;
+      const t = n.text.trim();
+      const fixed = { nodes: cur.nodes.map(x => (x.id === id ? Object.assign({}, x, { text: t || old.text }) : x)), edges: cur.edges };
+      setDoc(fixed);
+      if ((t || old.text) !== old.text) pushPast(start);
+    };
+
+    const clearBoard = () => {
+      commit({ nodes: [], edges: [] }, "Board cleared. Undo brings the map back.");
+      setSel(null); setMulti([]); cancelModes();
+    };
+
+    /* ── choosing claims: click, tap, or Enter / Space on a focused claim ── */
+    const activate = id => {
+      if (mode === "delete") { doDelete([id]); return; }
+      if (mode === "connect") {
+        if (!source) { setSource(id); announce("From " + an.ref(id) + ". Now choose the claim it " + (edgeKind === "supports" ? "supports." : "objects to.")); }
+        else if (source === id) { setSource(null); announce("Start claim cleared."); }
+        else { addArrow(edgeKind, source, id); setSource(null); }
+        return;
       }
-
-      // Single-source edge
-      if (edge.sources.length === 1) {
-        const src = nodes.find(n => n.id === edge.sources[0]);
-        const tgt = nodes.find(n => n.id === edge.target);
-        if (!src || !tgt) return null;
-        const start = rectEdgePoint(src, nodeCenter(tgt).x, nodeCenter(tgt).y);
-        const end   = rectEdgePoint(tgt, nodeCenter(src).x, nodeCenter(src).y);
-        const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
-        return (
-          <g onClick={onClick} style={{ cursor: 'pointer' }}>
-            <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={14} />
-            <line x1={start.x} y1={start.y} x2={end.x} y2={end.y}
-              stroke={color} strokeWidth={selected ? 2.5 : 1.8}
-              strokeDasharray={dash} markerEnd={`url(#${markerId})`} />
-            {edge.kind === 'objects' && !edge.targetEdge && (
-              <text x={mx} y={my - 8} textAnchor="middle" fill={color} fontSize={10}
-                fontFamily="'DM Mono', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                objects to
-              </text>
-            )}
-          </g>
-        );
+      if (mode === "join") {
+        const has = chosen.includes(id);
+        const next = has ? chosen.filter(x => x !== id) : chosen.concat([id]);
+        setChosen(next);
+        announce((has ? "Taken out: " : "Chosen: ") + an.ref(id) + ". " + next.length + " chosen.");
+        return;
       }
+      if (mode === "join-target") {
+        if (chosen.includes(id)) { announce("Choose a claim that is not one of the joined supports."); return; }
+        joinArrow(chosen, id);
+        setChosen([]);
+        setMode("join");
+        return;
+      }
+      if (multi.includes(id) && multi.length > 1) return;
+      setMulti([]);
+      setSel({ type: "node", id });
+    };
 
-      // Linked (group) edge
-      const bbox = groupBBox(edge.sources, nodes);
-      const tgt  = nodes.find(n => n.id === edge.target);
-      if (!bbox || !tgt) return null;
-      const { x: bx, y: by, w: bw, h: bh } = bbox;
-      const fromTop    = (tgt.y + NODE_H / 2) <= (by + bh / 2);
-      const ax         = bx + bw / 2;
-      const ay_bracket = fromTop ? by : by + bh;
-      const end        = rectEdgePoint(tgt, ax, ay_bracket);
-      const ay         = fromTop ? Math.max(ay_bracket, end.y + 34) : Math.min(ay_bracket, end.y - 34);
-      const rx = 10, armH = bh * 0.4;
-      const bracketPath = fromTop ? [
-        `M ${bx} ${by + armH}`, `L ${bx} ${by + rx}`,
-        `Q ${bx} ${by} ${bx + rx} ${by}`, `L ${bx + bw - rx} ${by}`,
-        `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`, `L ${bx + bw} ${by + armH}`,
-      ].join(' ') : [
-        `M ${bx} ${by + bh - armH}`, `L ${bx} ${by + bh - rx}`,
-        `Q ${bx} ${by + bh} ${bx + rx} ${by + bh}`, `L ${bx + bw - rx} ${by + bh}`,
-        `Q ${bx + bw} ${by + bh} ${bx + bw} ${by + bh - rx}`, `L ${bx + bw} ${by + bh - armH}`,
-      ].join(' ');
-      return (
-        <g onClick={onClick} style={{ cursor: 'pointer' }}>
-          <path d={bracketPath} fill="none" stroke={color}
-            strokeWidth={selected ? 2.5 : 1.8} strokeLinecap="round"
-            strokeDasharray={dash === 'none' ? '' : dash} />
-          <line x1={ax} y1={ay} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={14} />
-          <line x1={ax} y1={ay} x2={end.x} y2={end.y}
-            stroke={color} strokeWidth={selected ? 2.5 : 1.8}
-            strokeDasharray={dash} markerEnd={`url(#${markerId})`} />
-        </g>
-      );
-    }
+    /* ── pointer gestures: drag claims, pan the board, Shift + drag to select, two fingers to pinch ── */
+    const startPinch = () => {
+      const g = gesture.current;
+      if (g && g.type === "drag" && g.moved) pushPast(g.start);
+      const pts = Array.from(pointers.current.values());
+      gesture.current = {
+        type: "pinch",
+        d0: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1,
+        m0: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+        vp0: vpRef.current,
+      };
+      setBox(null);
+    };
+    const onCardPointerDown = (ev, id) => {
+      if (editing === id) return;
+      ev.stopPropagation();
+      suppressClick.current = false;
+      pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pointers.current.size === 2) { startPinch(); return; }
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      if (mode !== "select") return;
+      const c = toCanvas(ev.clientX, ev.clientY);
+      const group = multi.includes(id) && multi.length > 1 ? multi : [id];
+      const offs = {};
+      docRef.current.nodes.forEach(n => { if (group.includes(n.id)) offs[n.id] = { x: c.x - n.x, y: c.y - n.y }; });
+      gesture.current = { type: "drag", offs, start: docRef.current, moved: false, x0: ev.clientX, y0: ev.clientY, lead: id };
+      if (!multi.includes(id)) setMulti([]);
+    };
+    const onBoardPointerDown = ev => {
+      if (ev.target.closest && ev.target.closest(".am-card")) return;
+      suppressClick.current = false;
+      pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pointers.current.size === 2) { startPinch(); return; }
+      if (ev.pointerType === "mouse" && ev.button === 2) return;
+      if (ev.shiftKey && mode === "select") gesture.current = { type: "box", c0: toCanvas(ev.clientX, ev.clientY), x0: ev.clientX, y0: ev.clientY, moved: false };
+      else gesture.current = { type: "pan", x0: ev.clientX, y0: ev.clientY, vp0: vpRef.current, moved: false };
+    };
+    const onMove = ev => {
+      if (pointers.current.has(ev.pointerId)) pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      const g = gesture.current;
+      if (!g) return;
+      if (g.type === "pinch") {
+        const pts = Array.from(pointers.current.values());
+        if (pts.length < 2 || !boardRef.current) return;
+        const r = boardRef.current.getBoundingClientRect();
+        const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const m = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+        const s = clamp(g.vp0.scale * d / g.d0, ZOOM_MIN, ZOOM_MAX);
+        const cx = (g.m0.x - r.left - g.vp0.x) / g.vp0.scale, cy = (g.m0.y - r.top - g.vp0.y) / g.vp0.scale;
+        setVp({ scale: s, x: m.x - r.left - cx * s, y: m.y - r.top - cy * s });
+        return;
+      }
+      const dx = ev.clientX - g.x0, dy = ev.clientY - g.y0;
+      if (!g.moved && Math.hypot(dx, dy) < 4) return;
+      if (!g.moved) { g.moved = true; if (g.type === "pan") setPanning(true); }
+      if (g.type === "pan") { setVp({ scale: g.vp0.scale, x: g.vp0.x + dx, y: g.vp0.y + dy }); return; }
+      const c = toCanvas(ev.clientX, ev.clientY);
+      if (g.type === "drag") {
+        const cur = docRef.current;
+        setDoc({ nodes: cur.nodes.map(n => (g.offs[n.id] ? Object.assign({}, n, { x: snapV(c.x - g.offs[n.id].x), y: snapV(c.y - g.offs[n.id].y) }) : n)), edges: cur.edges });
+        return;
+      }
+      if (g.type === "box") setBox({ x: Math.min(c.x, g.c0.x), y: Math.min(c.y, g.c0.y), w: Math.abs(c.x - g.c0.x), h: Math.abs(c.y - g.c0.y) });
+    };
+    const onUp = ev => {
+      pointers.current.delete(ev.pointerId);
+      const g = gesture.current;
+      if (!g) return;
+      if (g.type === "pinch") {
+        if (pointers.current.size < 2) { gesture.current = null; suppressClick.current = true; }
+        return;
+      }
+      if (g.moved) suppressClick.current = true;
+      if (g.type === "drag" && g.moved) pushPast(g.start);
+      if (g.type === "box" && g.moved && box) {
+        const ids = docRef.current.nodes.filter(n => n.x < box.x + box.w && n.x + NODE_W > box.x && n.y < box.y + box.h && n.y + getH(n.id) > box.y).map(n => n.id);
+        if (ids.length > 1) { setMulti(ids); setSel(null); announce(ids.length + " claims selected."); }
+        else if (ids.length === 1) { setMulti([]); setSel({ type: "node", id: ids[0] }); }
+      }
+      setBox(null);
+      setPanning(false);
+      gesture.current = null;
+    };
+    const moveRef = useRef(onMove), upRef = useRef(onUp);
+    moveRef.current = onMove;
+    upRef.current = onUp;
+    useEffect(() => {
+      const m = ev => moveRef.current(ev), u = ev => upRef.current(ev);
+      window.addEventListener("pointermove", m);
+      window.addEventListener("pointerup", u);
+      window.addEventListener("pointercancel", u);
+      return () => {
+        window.removeEventListener("pointermove", m);
+        window.removeEventListener("pointerup", u);
+        window.removeEventListener("pointercancel", u);
+      };
+    }, []);
 
-    // ── Node Card ─────────────────────────────────────────────────────────────
-    function NodeCard({ node, role, selected, inGroup, isTarget, onMouseDown, onClick }) {
-      const rs          = ROLE_STYLE[role] || ROLE_STYLE[null];
-      const accentColor = selected ? '#f59e0b' : inGroup ? '#0ea5e9' : isTarget ? '#a855f7' : rs.accent;
-      const shadow      = selected  ? '0 0 0 3px rgba(245,158,11,0.22), 0 4px 16px rgba(0,0,0,0.11)'
-                        : inGroup   ? '0 0 0 3px rgba(14,165,233,0.18), 0 4px 14px rgba(0,0,0,0.08)'
-                        : isTarget  ? '0 0 0 3px rgba(168,85,247,0.18), 0 4px 14px rgba(0,0,0,0.08)'
-                        :              '0 2px 10px rgba(0,0,0,0.055)';
-      return (
-        <div onMouseDown={onMouseDown} onClick={onClick} style={{
-          position: 'absolute', left: node.x, top: node.y,
-          width: NODE_W, minHeight: NODE_H,
-          background: rs.bg,
-          border: `1.5px solid ${accentColor}`,
-          borderTop: `3px solid ${accentColor}`,
-          borderRadius: 10, padding: '10px 14px 11px',
-          cursor: 'grab', userSelect: 'none', boxShadow: shadow,
-          transition: 'box-shadow 0.12s, border-color 0.12s',
-          zIndex: selected || inGroup || isTarget ? 10 : 5,
-          boxSizing: 'border-box',
-        }}>
-          {rs.label && (
-            <div style={{
-              fontSize: 8.5, fontWeight: 700, letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: accentColor,
-              fontFamily: "'DM Mono', monospace", marginBottom: 5,
-            }}>{rs.label}</div>
-          )}
-          <div style={{
-            fontSize: 13.5, color: '#0f172a', lineHeight: 1.45,
-            fontFamily: "'Crimson Pro', Georgia, serif",
-          }}>{node.text}</div>
+    const onCardClick = (ev, id) => {
+      ev.stopPropagation();
+      if (suppressClick.current) { suppressClick.current = false; return; }
+      activate(id);
+    };
+    const onBoardClick = () => {
+      if (suppressClick.current) { suppressClick.current = false; return; }
+      if (mode === "connect") { if (source) { setSource(null); announce("Start claim cleared."); } return; }
+      if (mode === "join-target") { setMode("join"); return; }
+      if (mode !== "select") return;
+      setSel(null);
+      setMulti([]);
+    };
+    const onEdgeClick = (ev, ed) => {
+      ev.stopPropagation();
+      if (suppressClick.current) { suppressClick.current = false; return; }
+      if (mode === "delete") { removeEdge(ed.id); return; }
+      if (mode !== "select") return;
+      setMulti([]);
+      setSel({ type: "edge", id: ed.id });
+      announce("Arrow selected: " + describeEdge(an, ed) + ".");
+    };
+
+    const onCardKey = (ev, id) => {
+      if (editing === id) return;
+      const k = ev.key;
+      if (k === "Enter" || k === " ") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (mode === "select" && k === "Enter") startEdit(id); else activate(id);
+        return;
+      }
+      if (mode === "select" && (k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown")) {
+        ev.preventDefault();
+        const step = snap ? GRID : ev.shiftKey ? 40 : 8;
+        const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[k];
+        moveNodes(multi.includes(id) && multi.length > 1 ? multi : [id], d[0], d[1]);
+        return;
+      }
+      if (mode === "select" && (k === "Delete" || k === "Backspace")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        deleteNodes(multi.includes(id) && multi.length > 1 ? multi : [id]);
+      }
+    };
+    const onCardFocus = (ev, id) => {
+      if (mode === "select" && !multi.includes(id) && !(sel && sel.type === "node" && sel.id === id)) setSel({ type: "node", id });
+      let keyboard = false;
+      try { keyboard = ev.currentTarget.matches(":focus-visible"); } catch (err) { /* older browsers */ }
+      if (keyboard) ensureVisible(id);
+    };
+
+    /* ── page-wide keys ── */
+    const onKey = ev => {
+      if (confirm) return;
+      const t = ev.target;
+      const inField = !!(t && t.closest && t.closest("input, textarea, select, [contenteditable]"));
+      const mod = ev.metaKey || ev.ctrlKey;
+      if (mod && !inField && (ev.key === "z" || ev.key === "Z")) { ev.preventDefault(); if (ev.shiftKey) redo(); else undo(); return; }
+      if (mod && !inField && (ev.key === "y" || ev.key === "Y")) { ev.preventDefault(); redo(); return; }
+      if (ev.key === "Escape" && !inField) {
+        if (mode !== "select" || source || chosen.length) { cancelModes(); announce("Select."); }
+        else { setSel(null); setMulti([]); }
+        return;
+      }
+      const onBoard = t === document.body || (boardRef.current && boardRef.current.contains(t));
+      if ((ev.key === "Delete" || ev.key === "Backspace") && !inField && onBoard && mode === "select") {
+        if (multi.length > 1) { ev.preventDefault(); deleteNodes(multi); }
+        else if (sel && sel.type === "edge") { ev.preventDefault(); removeEdge(sel.id); }
+        else if (sel && sel.type === "node") { ev.preventDefault(); doDelete([sel.id]); }
+      }
+    };
+    const keyRef = useRef(onKey);
+    keyRef.current = onKey;
+    useEffect(() => {
+      const f = ev => keyRef.current(ev);
+      window.addEventListener("keydown", f);
+      return () => window.removeEventListener("keydown", f);
+    }, []);
+
+    /* ── confirmation dialog (clear the board, delete several claims) ── */
+    const returnFocus = useRef(null);
+    useEffect(() => {
+      const d = dialogRef.current;
+      if (!d) return;
+      if (confirm && !d.open) {
+        returnFocus.current = document.activeElement;
+        if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+      } else if (!confirm && d.open) {
+        if (d.close) d.close(); else d.removeAttribute("open");
+        const back = returnFocus.current;
+        if (back && document.contains(back)) back.focus({ preventScroll: true });
+        else if (boardRef.current) boardRef.current.focus({ preventScroll: true });
+      }
+    }, [confirm]);
+    const confirmYes = () => {
+      const c = confirm;
+      setConfirm(null);
+      if (!c) return;
+      if (c.kind === "clear") clearBoard();
+      if (c.kind === "many") doDelete(c.ids);
+    };
+
+    /* ── files and output ── */
+    const saveFile = () => {
+      const data = JSON.stringify({ format: "argument-map", version: 1, nodes: docRef.current.nodes, edges: docRef.current.edges }, null, 2);
+      downloadBlob("argument-map.json", new Blob([data], { type: "application/json" }));
+      announce("Saved argument-map.json to your downloads.");
+    };
+    const openFile = ev => {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = "";
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        let next = null;
+        try { next = readDoc(JSON.parse(reader.result)); } catch (err) { next = null; }
+        if (!next) { announce("That file isn't a saved argument map, so nothing changed."); window.alert("That file isn't a saved argument map, so nothing changed."); return; }
+        const had = docRef.current.nodes.length > 0;
+        commit(next, "Map opened" + (had ? ". Undo goes back to the map you had." : "."));
+        dropStale(next);
+        cancelModes();
+        setTimeout(fit, 80);
+      };
+      reader.readAsText(file);
+    };
+    const copyOut = async () => {
+      if (!an.text) return;
+      const ok = await sabCopy(an.text, an.html);
+      if (ok) { setCopied(true); announce("Copied to clipboard."); setTimeout(() => setCopied(false), 2000); }
+      else announce("Copying didn't work here. Select the text and copy it.");
+    };
+    const downloadTxt = () => { if (an.text) downloadBlob("argument-map.txt", new Blob([an.text + "\n"], { type: "text/plain" })); };
+    const savePng = async () => {
+      if (!doc.nodes.length || exporting) return;
+      setExporting(true);
+      try { await exportPng(docRef.current, an); announce("Saved argument-map.png to your downloads."); }
+      catch (err) { announce("The picture couldn't be made in this browser."); }
+      setExporting(false);
+    };
+
+    /* ── what to draw ── */
+    const byId = an.byId;
+    const selNode = sel && sel.type === "node" ? byId[sel.id] : null;
+    const selEdge = sel && sel.type === "edge" ? doc.edges.find(x => x.id === sel.id) : null;
+    const others = selNode ? doc.nodes.filter(n => n.id !== selNode.id) : [];
+    const optionText = n => (an.display[n.id] ? an.display[n.id] + ": " : "") + clip(n.text, 54);
+    const outgoing = selNode ? doc.edges.filter(x => x.sources.includes(selNode.id)) : [];
+    const incoming = selNode ? doc.edges.filter(x => x.target === selNode.id) : [];
+    const zoomPct = Math.round(vp.scale * 100);
+    const picking = mode !== "select";
+
+    useEffect(() => { setNewTarget(""); }, [sel && sel.id]);
+
+    const geoms = doc.edges.map(ed => ({ ed, g: edgeGeom(ed, byId, getH) })).filter(x => x.g);
+    const preview = (mode === "join" || mode === "join-target") && chosen.length >= 2 ? groupBox(chosen, byId, getH) : null;
+
+    const toolBtn = (label, pressed, onClick, extra) => html`<button type="button" className=${"am-tool" + (extra || "")} aria-pressed=${pressed ? "true" : "false"} onClick=${onClick}>${label}</button>`;
+
+    const edgeItem = (ed, from) => {
+      const joint = ed.sources.length > 1;
+      const candidates = from && ed.kind === "supports" ? doc.nodes.filter(n => n.id !== ed.target && !ed.sources.includes(n.id)) : [];
+      return html`<li className="am-item" key=${ed.id}>
+        <div className="am-item-text">${describeEdge(an, ed)}</div>
+        <div className="am-row">
+          ${!joint && html`<button type="button" className="am-btn am-btn--small" onClick=${() => switchKind(ed.id)}>${ed.kind === "supports" ? "Make it an objection" : "Make it a support"}</button>`}
+          ${joint && from && html`<button type="button" className="am-btn am-btn--small" onClick=${() => separate(ed.id, selNode.id)}>Give it its own arrow</button>`}
+          <button type="button" className="am-btn am-btn--small am-btn--danger" onClick=${() => removeEdge(ed.id)}>Remove arrow</button>
         </div>
-      );
-    }
+        ${candidates.length > 0 && html`<select className="am-select" aria-label=${"Join another support to the arrow: " + describeEdge(an, ed)} value="" onChange=${ev => { if (ev.target.value) addToJoint(ed.id, ev.target.value); }}>
+          <option value="">Join another support to this arrow…</option>
+          ${candidates.map(n => html`<option key=${n.id} value=${n.id}>${optionText(n)}</option>`)}
+        </select>`}
+      </li>`;
+    };
 
-    // ── Main App ──────────────────────────────────────────────────────────────
-    function ArgumentMapper() {
-      const [nodes,         setNodes]         = useState([]);
-      const [edges,         setEdges]         = useState([]);
-      const [inputText,     setInputText]     = useState('');
-      const [mode,          setMode]          = useState('select');
-      const [edgeKind,      setEdgeKind]      = useState('supports');
-      const [pendingDelete, setPendingDelete] = useState(null);
-      const [connectSource, setConnectSource] = useState(null);
-      const [groupNodes,    setGroupNodes]    = useState([]);
-      const [selectedNode,  setSelectedNode]  = useState(null);
-      const [selectedEdge,  setSelectedEdge]  = useState(null);
-      const [exporting,     setExporting]     = useState(false);
-      const [selectedNodes, setSelectedNodes] = useState([]);
-      const [selBox,        setSelBox]        = useState(null);
-      const [snapToGrid,    setSnapToGrid]    = useState(false);
-      const [canUndo,       setCanUndo]       = useState(false);
-      const [zoom,          setZoom]          = useState(1);
+    return html`<${React.Fragment}>
+      <div className="am-toolbar">
+        <div className="am-group" role="group" aria-label="Tools">
+          ${toolBtn("Select", mode === "select", () => switchMode("select"))}
+          ${toolBtn(html`<${Arrow} /> Supports`, mode === "connect" && edgeKind === "supports", () => switchMode("connect", "supports"))}
+          ${toolBtn(html`<${Arrow} dashed=${true} /> Objects to`, mode === "connect" && edgeKind === "objects", () => switchMode("connect", "objects"), " am-tool--objects")}
+          ${toolBtn("Join supports", mode === "join" || mode === "join-target", () => switchMode("join"))}
+          ${toolBtn("Delete", mode === "delete", () => switchMode("delete"))}
+        </div>
+        <div className="am-group" role="group" aria-label="History">
+          <button type="button" className="am-tool" onClick=${undo} disabled=${!past.current.length} title="Undo (Ctrl+Z or Command+Z)">Undo</button>
+          <button type="button" className="am-tool" onClick=${redo} disabled=${!future.current.length} title="Redo (Ctrl+Shift+Z or Command+Shift+Z)">Redo</button>
+        </div>
+        <div className="am-group" role="group" aria-label="View">
+          <button type="button" className="am-tool" onClick=${() => zoomBy(1 / 1.2)} aria-label="Zoom out" disabled=${vp.scale <= ZOOM_MIN + 1e-3}><span aria-hidden="true">−</span></button>
+          <button type="button" className="am-tool am-tool--num" onClick=${resetZoom} aria-label=${"Zoom " + zoomPct + " percent. Reset to 100 percent"}>${zoomPct}%</button>
+          <button type="button" className="am-tool" onClick=${() => zoomBy(1.2)} aria-label="Zoom in" disabled=${vp.scale >= ZOOM_MAX - 1e-3}><span aria-hidden="true">+</span></button>
+          <button type="button" className="am-tool" onClick=${fit} disabled=${!doc.nodes.length}>Fit</button>
+          <button type="button" className="am-tool" aria-pressed=${snap ? "true" : "false"} onClick=${() => setSnap(s => !s)} title="Line claims up on the dot grid">Snap</button>
+        </div>
+        <div className="am-group" role="group" aria-label="File">
+          <button type="button" className="am-tool" onClick=${saveFile} disabled=${!doc.nodes.length}>Save file</button>
+          <button type="button" className="am-tool" onClick=${() => fileRef.current && fileRef.current.click()}>Open file</button>
+          <button type="button" className="am-tool" onClick=${savePng} disabled=${!doc.nodes.length || exporting}>${exporting ? "Saving…" : "Save PNG"}</button>
+          <button type="button" className="am-tool" onClick=${() => setConfirm({ kind: "clear" })} disabled=${!doc.nodes.length}>Clear</button>
+        </div>
+        <input ref=${fileRef} type="file" accept=".json,application/json" onChange=${openFile} hidden />
+      </div>
 
-      const dragging                = useRef(null);
-      const dragOff                 = useRef({ x: 0, y: 0 });
-      const canvasRef               = useRef(null);
-      const textareaRef             = useRef(null);
-      const selBoxStart             = useRef(null);
-      const isSelBoxDragging        = useRef(false);
-      const multiDragOffsets        = useRef({});
-      const suppressNextCanvasClick = useRef(false);
-      const nodesRef                = useRef(nodes);
-      const snapToGridRef           = useRef(false);
-      const historyRef              = useRef([]);
-      const dragStartSnapshot       = useRef(null);
-      const dragMoved               = useRef(false);
-      const edgesRef                = useRef(edges);
-      const zoomRef                 = useRef(1);
+      <div className="am-work">
+        <div className="am-side">
+          <section className="am-panel am-add" aria-labelledby="am-add-h">
+            <h2 className="am-h2" id="am-add-h"><label htmlFor="am-new">Add a claim</label></h2>
+            <textarea id="am-new" ref=${addRef} className="am-textarea" value=${draft} placeholder="Type a claim…" rows="3"
+              aria-describedby="am-add-note"
+              onChange=${ev => setDraft(ev.target.value)}
+              onKeyDown=${ev => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); addClaim(); } }} />
+            <p className="am-note" id="am-add-note">Enter adds it to the board. Shift + Enter starts a new line.</p>
+            <button type="button" className="am-btn am-btn--solid am-btn--wide" onClick=${addClaim} disabled=${!draft.trim()}>Add claim</button>
+            ${!storageOk && html`<p className="am-note am-note--warn">This browser isn't keeping your map between visits. Use Save file to keep a copy.</p>`}
+          </section>
 
-      useEffect(() => { nodesRef.current = nodes; },     [nodes]);
-      useEffect(() => { edgesRef.current = edges; },     [edges]);
-      useEffect(() => { snapToGridRef.current = snapToGrid; }, [snapToGrid]);
-      useEffect(() => { zoomRef.current = zoom; },       [zoom]);
+          <div className="am-panels">
+            ${mode === "connect" && html`<section className="am-panel" aria-labelledby="am-conn-h">
+              <h2 className="am-h2" id="am-conn-h">${edgeKind === "supports" ? "Draw a support arrow" : "Draw an objection"}</h2>
+              ${source
+                ? html`<p className="am-desc">From ${an.ref(source)}: ${clip(byId[source] ? byId[source].text : "", 80)}</p>
+                       <p className="am-note">Now choose the claim it ${edgeKind === "supports" ? "supports" : "objects to"}.</p>
+                       <div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => { setSource(null); announce("Start claim cleared."); }}>Choose a different start</button></div>`
+                : html`<p className="am-note">Choose the ${edgeKind === "supports" ? "reason" : "objection"} on the board, then the claim it ${edgeKind === "supports" ? "supports" : "objects to"}. With the keyboard, Tab to a claim and press Enter.</p>`}
+              <div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => switchMode("select")}>Done</button></div>
+            </section>`}
 
-      // ── History ──────────────────────────────────────────────────────────────
-      const pushHistory = useCallback((sn, se) => {
-        historyRef.current = [...historyRef.current.slice(-49), { nodes: sn, edges: se }];
-        setCanUndo(true);
-      }, []);
+            ${(mode === "join" || mode === "join-target") && html`<section className="am-panel" aria-labelledby="am-join-h">
+              <h2 className="am-h2" id="am-join-h">Join supports</h2>
+              <p className="am-note">Supports that only work together share one arrow under a bracket. ${mode === "join" ? "Choose them on the board, then press Next." : "Now choose the claim they support together."}</p>
+              ${chosen.length > 0 && html`<ul className="am-list" style=${{ marginTop: "0.6rem" }}>
+                ${chosen.map(id => html`<li className="am-item" key=${id}><div className="am-item-text">${an.display[id] ? an.display[id] + ": " : ""}${clip(byId[id] ? byId[id].text : "", 60)}</div>
+                  ${mode === "join" && html`<div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => setChosen(c => c.filter(x => x !== id))}>Take out</button></div>`}</li>`)}
+              </ul>`}
+              <div className="am-row">
+                ${mode === "join"
+                  ? html`<button type="button" className="am-btn am-btn--solid am-btn--small" disabled=${chosen.length < 2} onClick=${() => { setMode("join-target"); announce("Now choose the claim they support together."); }}>Next</button>
+                         <button type="button" className="am-btn am-btn--small" disabled=${!chosen.length} onClick=${() => setChosen([])}>Clear</button>`
+                  : html`<button type="button" className="am-btn am-btn--small" onClick=${() => setMode("join")}>Back</button>`}
+                <button type="button" className="am-btn am-btn--small" onClick=${() => switchMode("select")}>Done</button>
+              </div>
+            </section>`}
 
-      const undo = useCallback(() => {
-        if (!historyRef.current.length) return;
-        const snap = historyRef.current[historyRef.current.length - 1];
-        historyRef.current = historyRef.current.slice(0, -1);
-        setNodes(snap.nodes); setEdges(snap.edges);
-        setSelectedNode(null); setSelectedEdge(null); setSelectedNodes([]);
-        setCanUndo(historyRef.current.length > 0);
-      }, []);
+            ${mode === "select" && multi.length > 1 && html`<section className="am-panel" aria-labelledby="am-multi-h">
+              <h2 className="am-h2" id="am-multi-h">${multi.length} claims selected</h2>
+              <p className="am-note">Drag any of them to move them all. On the keyboard, the arrow keys move them together.</p>
+              <div className="am-row"><button type="button" className="am-btn am-btn--danger" onClick=${() => deleteNodes(multi)}>Delete selected</button>
+                <button type="button" className="am-btn" onClick=${() => setMulti([])}>Deselect</button></div>
+            </section>`}
 
-      useEffect(() => {
-        const onKey = e => {
-          if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-          if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); }
-        };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
-      }, [undo]);
+            ${mode === "select" && multi.length <= 1 && selNode && html`<section className="am-panel" aria-labelledby="am-sel-h">
+              <h2 className="am-h2" id="am-sel-h">Selected claim${an.display[selNode.id] ? html` <span className="am-code">${an.display[selNode.id]}</span>` : null}</h2>
+              <label className="am-label" htmlFor="am-sel-text">Words</label>
+              <textarea id="am-sel-text" className="am-textarea" rows="3" value=${selNode.text}
+                onFocus=${() => { sideEditStart.current = docRef.current; }}
+                onChange=${ev => sideText(selNode.id, ev.target.value)}
+                onBlur=${() => sideTextDone(selNode.id)} />
 
-      const roleMap = {};
-      nodes.forEach(n => { roleMap[n.id] = deriveRole(n.id, edges); });
+              <h3 className="am-h3">Draw an arrow from this claim</h3>
+              ${others.length === 0
+                ? html`<p className="am-note">Add another claim first.</p>`
+                : html`<div className="am-seg" role="group" aria-label="Kind of arrow">
+                    <button type="button" className="am-btn am-btn--small" aria-pressed=${newKind === "supports" ? "true" : "false"} onClick=${() => setNewKind("supports")}>Supports</button>
+                    <button type="button" className="am-btn am-btn--small am-btn--obj" aria-pressed=${newKind === "objects" ? "true" : "false"} onClick=${() => setNewKind("objects")}>Objects to</button>
+                  </div>
+                  <label className="am-label" htmlFor="am-target">${newKind === "supports" ? "The claim it supports" : "The claim it objects to"}</label>
+                  <select id="am-target" className="am-select" value=${newTarget} onChange=${ev => setNewTarget(ev.target.value)}>
+                    <option value="">Choose a claim…</option>
+                    ${others.map(n => html`<option key=${n.id} value=${n.id}>${optionText(n)}</option>`)}
+                  </select>
+                  <button type="button" className="am-btn am-btn--wide" disabled=${!newTarget} onClick=${() => { addArrow(newKind, selNode.id, newTarget); setNewTarget(""); }}>Add arrow</button>`}
 
-      // ── Add node ─────────────────────────────────────────────────────────────
-      const addNode = () => {
-        if (!inputText.trim()) return;
-        const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : { width: 900, height: 600 };
-        const x = 60 + Math.random() * Math.max(rect.width  - NODE_W - 80, 200);
-        const y = 60 + Math.random() * Math.max(rect.height - NODE_H - 100, 200);
-        pushHistory(nodes, edges);
-        setNodes(prev => [...prev, { id: uid(), text: inputText.trim(), x, y }]);
-        setInputText('');
-        setModeClean('select');
-        if (textareaRef.current) textareaRef.current.focus();
-      };
+              ${outgoing.length > 0 && html`<h3 className="am-h3">Arrows from this claim</h3><ul className="am-list">${outgoing.map(ed => edgeItem(ed, true))}</ul>`}
+              ${incoming.length > 0 && html`<h3 className="am-h3">Arrows into this claim</h3><ul className="am-list">${incoming.map(ed => edgeItem(ed, false))}</ul>`}
 
-      // ── Drag ─────────────────────────────────────────────────────────────────
-      const handleNodeMouseDown = useCallback((e, nodeId) => {
-        if (mode !== 'select') return;
-        e.stopPropagation();
-        const node = nodes.find(n => n.id === nodeId);
-        if (!node) return;
-        const z = zoomRef.current;
-        dragging.current      = nodeId;
-        dragOff.current       = { x: e.clientX / z - node.x, y: e.clientY / z - node.y };
-        dragStartSnapshot.current = { nodes: nodesRef.current, edges: edgesRef.current };
-        dragMoved.current     = false;
-        if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) {
-          const offs = {};
-          nodes.filter(n => selectedNodes.includes(n.id)).forEach(n => {
-            offs[n.id] = { x: e.clientX / z - n.x, y: e.clientY / z - n.y };
-          });
-          multiDragOffsets.current = offs;
-        } else {
-          multiDragOffsets.current = {};
-          if (!selectedNodes.includes(nodeId)) setSelectedNodes([]);
-        }
-      }, [mode, nodes, selectedNodes]);
+              <div className="am-row" style=${{ marginTop: "1rem" }}>
+                <button type="button" className="am-btn am-btn--danger" onClick=${() => doDelete([selNode.id])}>Delete claim</button>
+              </div>
+              <p className="am-note">On the board: Enter edits a claim, the arrow keys move it (Shift moves it farther), Delete removes it.</p>
+            </section>`}
 
-      const handleMouseMove = useCallback((e) => {
-        const z = zoomRef.current;
-        if (isSelBoxDragging.current && selBoxStart.current) {
-          const rect = canvasRef.current?.getBoundingClientRect();
-          if (rect) {
-            const cx = (e.clientX - rect.left) / z, cy = (e.clientY - rect.top) / z;
-            const sx = selBoxStart.current.x, sy = selBoxStart.current.y;
-            setSelBox({ x: Math.min(cx, sx), y: Math.min(cy, sy), w: Math.abs(cx - sx), h: Math.abs(cy - sy) });
-          }
-          return;
-        }
-        if (!dragging.current) return;
-        dragMoved.current = true;
-        const snp = v => snapToGridRef.current ? Math.round(v / 28) * 28 : v;
-        const offs = multiDragOffsets.current;
-        if (Object.keys(offs).length > 0) {
-          setNodes(prev => prev.map(n => offs[n.id]
-            ? { ...n, x: snp(e.clientX / z - offs[n.id].x), y: snp(e.clientY / z - offs[n.id].y) } : n));
-        } else {
-          setNodes(prev => prev.map(n => n.id === dragging.current
-            ? { ...n, x: snp(e.clientX / z - dragOff.current.x), y: snp(e.clientY / z - dragOff.current.y) } : n));
-        }
-      }, []);
-
-      const handleMouseUp = useCallback(() => {
-        if (isSelBoxDragging.current) {
-          isSelBoxDragging.current = false;
-          selBoxStart.current = null;
-          setSelBox(prev => {
-            if (prev && (prev.w > 4 || prev.h > 4)) {
-              const matched = nodesRef.current.filter(n =>
-                n.x < prev.x + prev.w && n.x + NODE_W > prev.x &&
-                n.y < prev.y + prev.h && n.y + NODE_H > prev.y);
-              if (matched.length > 0) {
-                setSelectedNodes(matched.map(n => n.id));
-                suppressNextCanvasClick.current = true;
-              }
-            }
-            return null;
-          });
-        }
-        if (dragging.current && dragMoved.current && dragStartSnapshot.current) {
-          pushHistory(dragStartSnapshot.current.nodes, dragStartSnapshot.current.edges);
-        }
-        dragging.current = null; dragStartSnapshot.current = null;
-        dragMoved.current = false; multiDragOffsets.current = {};
-      }, [pushHistory]);
-
-      const handleCanvasMouseDown = useCallback((e) => {
-        if (mode !== 'select') return;
-        const rect = canvasRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const z = zoomRef.current;
-        isSelBoxDragging.current = true;
-        selBoxStart.current = { x: (e.clientX - rect.left) / z, y: (e.clientY - rect.top) / z };
-        setSelBox({ x: selBoxStart.current.x, y: selBoxStart.current.y, w: 0, h: 0 });
-        setSelectedNode(null); setSelectedEdge(null);
-      }, [mode]);
-
-      // ── Node click ───────────────────────────────────────────────────────────
-      const handleNodeClick = useCallback((e, nodeId) => {
-        e.stopPropagation();
-        if (mode === 'delete') { setPendingDelete({ type: 'node', id: nodeId }); return; }
-        if (mode === 'connect') {
-          if (!connectSource) { setConnectSource(nodeId); }
-          else if (connectSource !== nodeId) {
-            const exists = edges.find(ed => ed.sources.length === 1 && ed.sources[0] === connectSource && ed.target === nodeId);
-            if (!exists) { pushHistory(nodes, edges); setEdges(p => [...p, { id: uid(), sources: [connectSource], target: nodeId, kind: edgeKind }]); }
-            setConnectSource(null);
-          } else { setConnectSource(null); }
-          return;
-        }
-        if (mode === 'group-build') {
-          setGroupNodes(prev => prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]);
-          return;
-        }
-        if (mode === 'group-target') {
-          if (!groupNodes.includes(nodeId)) {
-            const exists = edges.find(ed => ed.target === nodeId && ed.sources.length === groupNodes.length && groupNodes.every(id => ed.sources.includes(id)));
-            if (!exists) { pushHistory(nodes, edges); setEdges(p => [...p, { id: uid(), sources: [...groupNodes], target: nodeId, kind: edgeKind }]); }
-            setGroupNodes([]); setMode('group-build');
-          }
-          return;
-        }
-        if (selectedNodes.includes(nodeId) && selectedNodes.length > 1) return;
-        setSelectedNodes([]); setSelectedNode(nodeId); setSelectedEdge(null);
-      }, [mode, connectSource, groupNodes, edges, edgeKind, selectedNodes, pushHistory]);
-
-      const handleCanvasClick = () => {
-        if (suppressNextCanvasClick.current) { suppressNextCanvasClick.current = false; return; }
-        if (mode === 'connect')      { setConnectSource(null); return; }
-        if (mode === 'group-target') { setMode('group-build'); return; }
-        setSelectedNode(null); setSelectedEdge(null); setSelectedNodes([]);
-      };
-
-      const setModeClean = m => {
-        setMode(m); setConnectSource(null); setGroupNodes([]);
-        setSelectedNode(null); setSelectedEdge(null); setSelectedNodes([]); setSelBox(null);
-      };
-
-      const deleteSelected = () => {
-        if (selectedNode)   setPendingDelete({ type: 'node', id: selectedNode });
-        else if (selectedEdge) setPendingDelete({ type: 'edge', id: selectedEdge });
-      };
-
-      const confirmDelete = () => {
-        if (!pendingDelete) return;
-        pushHistory(nodes, edges);
-        if (pendingDelete.type === 'node') {
-          setNodes(p => p.filter(n => n.id !== pendingDelete.id));
-          setEdges(p => p.filter(e => !(e.sources || []).includes(pendingDelete.id) && e.target !== pendingDelete.id));
-          if (selectedNode === pendingDelete.id) setSelectedNode(null);
-        } else {
-          setEdges(p => p.filter(e => e.id !== pendingDelete.id && e.targetEdge !== pendingDelete.id));
-          if (selectedEdge === pendingDelete.id) setSelectedEdge(null);
-        }
-        setPendingDelete(null);
-      };
-
-      const cancelDelete = () => setPendingDelete(null);
-
-      // ── Export ───────────────────────────────────────────────────────────────
-      const exportPNG = () => {
-        if (!canvasRef.current || nodes.length === 0 || exporting) return;
-        setExporting(true);
-        html2canvas(canvasRef.current, { backgroundColor: '#f1f5f9', scale: 2, useCORS: true, logging: false })
-          .then(c => { const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'argument-map.png'; a.click(); setExporting(false); })
-          .catch(() => setExporting(false));
-      };
-
-      // ── Hints / colors ───────────────────────────────────────────────────────
-      const getHint = () => {
-        if (mode === 'connect' && edgeKind === 'objects') return connectSource ? 'Now click a node or an arrow to object to' : 'Click the objecting claim';
-        if (mode === 'connect')      return connectSource ? 'Now click the conclusion node' : 'Click the premise node';
-        if (mode === 'group-build')  return `Click premises to group (${groupNodes.length} selected) — then Done`;
-        if (mode === 'group-target') return 'Click the conclusion node to connect the linked premises';
-        if (mode === 'delete')       return 'Click any node or arrow to delete it';
-        if (selectedNodes.length > 1) return `${selectedNodes.length} nodes selected — drag any to move all`;
-        return `Drag empty area to box-select · drag nodes to reposition${snapToGrid ? ' · snap on' : ''}`;
-      };
-
-      const modeColor = { select: '#22c55e', connect: '#0ea5e9', 'group-build': '#f59e0b', 'group-target': '#a855f7', delete: '#dc2626' };
-
-      const TBtn = ({ m, label }) => (
-        <button onClick={() => setModeClean(m)} style={{
-          padding: '7px 15px', borderRadius: 7, border: 'none', cursor: 'pointer',
-          background: mode === m ? '#0f172a' : '#f1f5f9',
-          color: mode === m ? '#fff' : '#475569',
-          fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
-        }}>{label}</button>
-      );
-
-      const supActive = mode === 'connect' && edgeKind === 'supports';
-      const objActive = mode === 'connect' && edgeKind === 'objects';
-
-      // ── Render ───────────────────────────────────────────────────────────────
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9' }}
-          onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
-
-          {/* ── Header ── */}
-          <div style={{ padding: '11px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', fontFamily: "'Crimson Pro', serif", letterSpacing: '-0.02em' }}>
-              Argument Mapper
-              <span style={{ fontSize: 11, color: '#cbd5e1', fontFamily: "'DM Mono', monospace", fontWeight: 400, marginLeft: 10 }}>{nodes.length}n · {edges.length}e</span>
-            </span>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <TBtn m="select" label="Select" />
-
-              {/* Supports */}
-              <button onClick={() => { setModeClean('connect'); setEdgeKind('supports'); }} style={{
-                padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                background: supActive ? '#0f172a' : '#f1f5f9', color: supActive ? '#fff' : '#475569',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <svg width={22} height={11} style={{ flexShrink: 0 }}>
-                  <line x1={0} y1={5.5} x2={15} y2={5.5} stroke={supActive ? '#fff' : '#1e293b'} strokeWidth={1.8} strokeLinecap="round" />
-                  <path d="M12 2L19 5.5L12 9" fill="none" stroke={supActive ? '#fff' : '#1e293b'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Supports
-              </button>
-
-              {/* Objects to */}
-              <button onClick={() => { setModeClean('connect'); setEdgeKind('objects'); }} style={{
-                padding: '7px 13px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                background: objActive ? '#dc2626' : '#f1f5f9', color: objActive ? '#fff' : '#dc2626',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <svg width={22} height={11} style={{ flexShrink: 0 }}>
-                  <line x1={0} y1={5.5} x2={15} y2={5.5} stroke={objActive ? '#fff' : '#dc2626'} strokeWidth={1.8} strokeLinecap="round" strokeDasharray="4,3" />
-                  <path d="M12 2L19 5.5L12 9" fill="none" stroke={objActive ? '#fff' : '#dc2626'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Objects to
-              </button>
-
-              <TBtn m="group-build" label="Link" />
-              <TBtn m="delete" label="Delete" />
-              <div style={{ width: 1, height: 22, background: '#e2e8f0', marginLeft: 2 }} />
-
-              {/* Undo */}
-              <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" style={{
-                padding: '7px 12px', borderRadius: 7, border: 'none',
-                cursor: canUndo ? 'pointer' : 'default', background: '#f1f5f9',
-                color: canUndo ? '#475569' : '#cbd5e1',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-              }}>↩ Undo</button>
-
-              {/* Snap */}
-              <button onClick={() => setSnapToGrid(s => !s)} style={{
-                padding: '7px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                background: snapToGrid ? '#6366f1' : '#f1f5f9', color: snapToGrid ? '#fff' : '#475569',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <svg width={12} height={12}>
-                  {[[2,2],[10,2],[2,10],[10,10]].map(([cx,cy]) => (
-                    <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.5} fill={snapToGrid ? 'rgba(255,255,255,0.85)' : '#6366f1'} />
-                  ))}
-                </svg>
-                Snap
-              </button>
-
-              <div style={{ width: 1, height: 22, background: '#e2e8f0' }} />
-              <button onClick={exportPNG} disabled={exporting || nodes.length === 0} style={{
-                padding: '7px 13px', borderRadius: 7, border: '1px solid #e2e8f0',
-                background: '#fff', color: exporting ? '#94a3b8' : '#475569',
-                fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500,
-                cursor: exporting ? 'wait' : 'pointer',
-              }}>{exporting ? 'Exporting…' : '↓ PNG'}</button>
-            </div>
+            ${mode === "select" && multi.length <= 1 && selEdge && html`<section className="am-panel" aria-labelledby="am-edge-h">
+              <h2 className="am-h2" id="am-edge-h">Selected arrow</h2>
+              <p className="am-desc">${describeEdge(an, selEdge)}</p>
+              ${selEdge.sources.length > 1 && html`<ul className="am-list" style=${{ marginTop: "0.6rem" }}>
+                ${selEdge.sources.map(s => html`<li className="am-item" key=${s}><div className="am-item-text">${an.ref(s)}: ${clip(byId[s] ? byId[s].text : "", 60)}</div>
+                  <div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => separate(selEdge.id, s)}>Give it its own arrow</button></div></li>`)}
+              </ul>`}
+              <div className="am-row">
+                ${selEdge.sources.length === 1 && html`<button type="button" className="am-btn am-btn--small" onClick=${() => switchKind(selEdge.id)}>${selEdge.kind === "supports" ? "Make it an objection" : "Make it a support"}</button>`}
+                <button type="button" className="am-btn am-btn--small am-btn--danger" onClick=${() => removeEdge(selEdge.id)}>Remove arrow</button>
+              </div>
+            </section>`}
           </div>
-
-          {/* ── Body ── */}
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-            {/* ── Sidebar ── */}
-            <div style={{ width: 220, background: '#fff', borderRight: '1px solid #e2e8f0', padding: 18, display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>
-
-              {/* Add claim */}
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Add Claim</div>
-                <textarea ref={textareaRef} value={inputText}
-                  onChange={e => setInputText(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNode(); } }}
-                  placeholder="Type a claim…" rows={3}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 7, marginBottom: 9, border: '1.5px solid #e2e8f0', background: '#f8fafc', fontFamily: "'Crimson Pro', Georgia, serif", fontSize: 14, color: '#0f172a', resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.5 }} />
-                <button onClick={addNode} style={{ width: '100%', padding: '9px', borderRadius: 7, border: 'none', background: '#0f172a', color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
-              </div>
-
-              {/* Linked premises builder */}
-              {(mode === 'group-build' || mode === 'group-target') && (
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Linked Premises</div>
-                  {groupNodes.length === 0
-                    ? <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>Click premises on the canvas to add them.</div>
-                    : <div>
-                        {groupNodes.map(id => {
-                          const n = nodes.find(x => x.id === id);
-                          return n ? (
-                            <div key={id} style={{ fontSize: 12, color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, padding: '5px 8px', marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6, opacity: mode === 'group-target' ? 0.6 : 1 }}>
-                              <span style={{ fontFamily: "'Crimson Pro', serif", fontSize: 12.5, lineHeight: 1.4 }}>{n.text.slice(0, 40)}{n.text.length > 40 ? '…' : ''}</span>
-                              {mode === 'group-build' && (
-                                <button onClick={() => setGroupNodes(p => p.filter(x => x !== id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, fontSize: 13, lineHeight: 1, flexShrink: 0 }}>✕</button>
-                              )}
-                            </div>
-                          ) : null;
-                        })}
-                        {mode === 'group-build' && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                            {groupNodes.length >= 2 && (
-                              <button onClick={() => setMode('group-target')} style={{ flex: 1, padding: '8px', borderRadius: 7, border: 'none', background: '#0f172a', color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done →</button>
-                            )}
-                            <button onClick={() => setGroupNodes([])} style={{ flex: groupNodes.length >= 2 ? 'none' : 1, padding: '8px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#94a3b8', fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: 'pointer' }}>Clear</button>
-                          </div>
-                        )}
-                        {mode === 'group-target' && (
-                          <div style={{ marginTop: 6, padding: '8px 10px', borderRadius: 7, background: '#faf5ff', border: '1px solid #d8b4fe', fontSize: 12, color: '#6b21a8' }}>
-                            Click the conclusion node on the canvas.
-                          </div>
-                        )}
-                      </div>
-                  }
-                </div>
-              )}
-
-              {/* Connect source reminder */}
-              {mode === 'connect' && connectSource && (() => {
-                const n = nodes.find(x => x.id === connectSource);
-                return n ? (
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>From</div>
-                    <div style={{ padding: '8px 10px', borderRadius: 7, background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12.5, color: '#0369a1', fontFamily: "'Crimson Pro', serif", lineHeight: 1.4 }}>{n.text}</div>
-                  </div>
-                ) : null;
-              })()}
-
-              {/* Selected node info */}
-              {selectedNode && mode === 'select' && (() => {
-                const n = nodes.find(x => x.id === selectedNode);
-                if (!n) return null;
-                const rs = ROLE_STYLE[roleMap[n.id]] || ROLE_STYLE[null];
-                return (
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>Selected</div>
-                    <div style={{ padding: '9px 11px', borderRadius: 8, background: rs.bg, border: `1.5px solid ${rs.accent}`, borderTop: `3px solid ${rs.accent}`, marginBottom: 8 }}>
-                      {rs.label && <div style={{ fontSize: 8.5, fontWeight: 700, color: rs.accent, textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", marginBottom: 4, letterSpacing: '0.12em' }}>{rs.label}</div>}
-                      <div style={{ fontSize: 12.5, color: '#0f172a', fontFamily: "'Crimson Pro', serif", lineHeight: 1.4 }}>{n.text}</div>
-                    </div>
-                    <button onClick={deleteSelected} style={{ width: '100%', padding: '7px', borderRadius: 7, border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Delete Node</button>
-                  </div>
-                );
-              })()}
-
-              {/* Legend */}
-              <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>How it works</div>
-                {[['Premise','#94a3b8','sends an arrow, receives none'],['Conclusion','#f59e0b','receives arrows, sends none'],['Subconclusion','#0ea5e9','both sends and receives']].map(([role, color, desc]) => (
-                  <div key={role} style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-                    <div style={{ width: 3, height: 32, borderRadius: 2, background: color, flexShrink: 0, marginTop: 2 }} />
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>{role}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{desc}</div>
-                    </div>
-                  </div>
-                ))}
-                <div style={{ height: 1, background: '#f1f5f9', margin: '10px 0' }} />
-                {Object.entries(EDGE_KINDS).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <svg width={28} height={10}>
-                      <line x1={0} y1={5} x2={18} y2={5} stroke={v.stroke} strokeWidth={1.8} strokeDasharray={v.dash === 'none' ? '' : v.dash} />
-                      <path d="M18 2L24 5L18 8" fill="none" stroke={v.arrowFill} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span style={{ fontSize: 11, color: v.stroke }}>{v.label}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <svg width={28} height={10}>
-                    <line x1={0} y1={5} x2={14} y2={5} stroke="#dc2626" strokeWidth={1.8} strokeDasharray="7,4" />
-                    <path d="M14 2L20 5L14 8" fill="none" stroke="#dc2626" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx={25} cy={5} r={2.5} fill="#fff2f2" stroke="#dc2626" strokeWidth={1.3} />
-                  </svg>
-                  <span style={{ fontSize: 11, color: '#dc2626' }}>Objects to reasoning</span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Canvas area ── */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-              {/* Status bar */}
-              <div style={{ padding: '5px 18px', background: '#f8fafc', borderBottom: '1px solid #e8edf2', fontSize: 11.5, color: '#64748b', fontFamily: "'DM Mono', monospace", display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', display: 'inline-block', flexShrink: 0, background: modeColor[mode] || '#94a3b8' }} />
-                <span style={{ flex: 1 }}>{getHint()}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                  <button onClick={() => setZoom(z => Math.max(0.25, +(z - 0.1).toFixed(2)))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>−</button>
-                  <input type="range" min={0.25} max={2} step={0.05} value={zoom} onChange={e => setZoom(+e.target.value)} style={{ width: 80, cursor: 'pointer', accentColor: '#475569' }} />
-                  <button onClick={() => setZoom(z => Math.min(2, +(z + 0.1).toFixed(2)))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>+</button>
-                  <span style={{ fontSize: 10.5, color: '#94a3b8', minWidth: 34, textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
-                  <button onClick={() => setZoom(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 10.5, textDecoration: 'underline', padding: '0 2px' }}>reset</button>
-                </div>
-              </div>
-
-              {/* Canvas */}
-              <div ref={canvasRef} onClick={handleCanvasClick} onMouseDown={handleCanvasMouseDown}
-                style={{
-                  flex: 1, position: 'relative', overflow: 'hidden',
-                  backgroundImage: 'radial-gradient(circle, #c8d3df 1px, transparent 1px)',
-                  backgroundSize: `${28 * zoom}px ${28 * zoom}px`,
-                  cursor: mode === 'delete' ? 'not-allowed' : mode !== 'select' ? 'crosshair' : 'default',
-                }}>
-
-                {/* Zoom wrapper */}
-                <div style={{ position: 'absolute', top: 0, left: 0, transformOrigin: '0 0', transform: `scale(${zoom})`, width: `${100 / zoom}%`, height: `${100 / zoom}%` }}>
-
-                  {/* SVG layer */}
-                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'all', overflow: 'visible' }}>
-                    <defs>
-                      {Object.entries(EDGE_KINDS).map(([k, v]) => (
-                        <marker key={k} id={`arr-${k}`} markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
-                          <path d="M1 1L5 3L1 5" fill="none" stroke={v.arrowFill} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-                        </marker>
-                      ))}
-                      <marker id="arr-supports-sel" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
-                        <path d="M1 1L5 3L1 5" fill="none" stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-                      </marker>
-                      <marker id="arr-objects-sel" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
-                        <path d="M1 1L5 3L1 5" fill="none" stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-                      </marker>
-                      <marker id="arr-rebukes" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
-                        <path d="M1 1L5 3L1 5" fill="none" stroke="#dc2626" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-                      </marker>
-                      <marker id="arr-rebukes-sel" markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
-                        <path d="M1 1L5 3L1 5" fill="none" stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-                      </marker>
-                    </defs>
-
-                    <rect x="-9999" y="-9999" width="99999" height="99999" fill="transparent" style={{ pointerEvents: 'all' }}
-                      onClick={e => { e.stopPropagation(); handleCanvasClick(); }} />
-
-                    {selBox && selBox.w > 2 && selBox.h > 2 && (
-                      <rect x={selBox.x} y={selBox.y} width={selBox.w} height={selBox.h}
-                        fill="rgba(99,102,241,0.07)" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="5,3" rx={4}
-                        style={{ pointerEvents: 'none' }} />
-                    )}
-
-                    {(mode === 'group-build' || mode === 'group-target') && groupNodes.length >= 2 && (() => {
-                      const bbox = groupBBox(groupNodes, nodes);
-                      if (!bbox) return null;
-                      const { x: bx, y: by, w: bw, h: bh } = bbox;
-                      const armH = bh * 0.4, rx = 10;
-                      const p = [`M ${bx} ${by + armH}`, `L ${bx} ${by + rx}`, `Q ${bx} ${by} ${bx + rx} ${by}`, `L ${bx + bw - rx} ${by}`, `Q ${bx + bw} ${by} ${bx + bw} ${by + rx}`, `L ${bx + bw} ${by + armH}`].join(' ');
-                      return <path d={p} fill="none" stroke={mode === 'group-target' ? '#a855f7' : '#f59e0b'} strokeWidth={1.8} strokeDasharray="6,3" strokeLinecap="round" style={{ pointerEvents: 'none' }} />;
-                    })()}
-
-                    {edges.map(edge => (
-                      <EdgeSVG key={edge.id} edge={edge} nodes={nodes} edges={edges}
-                        selected={selectedEdge === edge.id}
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (mode === 'delete') {
-                            setPendingDelete({ type: 'edge', id: edge.id });
-                          } else if (mode === 'connect' && edgeKind === 'objects' && connectSource && !edge.targetEdge) {
-                            const exists = edges.find(ed => ed.targetEdge === edge.id && ed.sources.length === 1 && ed.sources[0] === connectSource);
-                            if (!exists) { pushHistory(nodes, edges); setEdges(p => [...p, { id: uid(), sources: [connectSource], targetEdge: edge.id, kind: 'objects' }]); }
-                            setConnectSource(null);
-                          } else {
-                            setSelectedEdge(edge.id); setSelectedNode(null);
-                          }
-                        }} />
-                    ))}
-
-                    {mode === 'connect' && connectSource && (() => {
-                      const n = nodes.find(x => x.id === connectSource);
-                      if (!n) return null;
-                      return <rect x={n.x - 5} y={n.y - 5} width={NODE_W + 10} height={NODE_H + 10} rx={14}
-                        fill="none" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="5,3" style={{ pointerEvents: 'none' }} />;
-                    })()}
-                  </svg>
-
-                  {/* Node cards */}
-                  {nodes.map(node => (
-                    <NodeCard key={node.id} node={node} role={roleMap[node.id]}
-                      selected={selectedNode === node.id || selectedNodes.includes(node.id)}
-                      inGroup={groupNodes.includes(node.id)}
-                      isTarget={mode === 'group-target' && !groupNodes.includes(node.id)}
-                      onMouseDown={e => handleNodeMouseDown(e, node.id)}
-                      onClick={e => handleNodeClick(e, node.id)} />
-                  ))}
-
-                  {/* Empty state */}
-                  {nodes.length === 0 && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
-                      <div style={{ fontSize: 34 }}>🗺</div>
-                      <div style={{ fontSize: 15, color: '#94a3b8', fontFamily: "'Crimson Pro', serif" }}>Add a claim from the left panel to begin</div>
-                    </div>
-                  )}
-
-                </div>{/* end zoom wrapper */}
-
-                {/* Delete modal — outside zoom wrapper */}
-                {pendingDelete && (() => {
-                  const isNode = pendingDelete.type === 'node';
-                  const node = isNode ? nodes.find(n => n.id === pendingDelete.id) : null;
-                  const label = isNode ? `"${node?.text?.slice(0, 48) ?? ''}${(node?.text?.length ?? 0) > 48 ? '…' : ''}"` : 'this arrow';
-                  return (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.25)', zIndex: 200 }} onClick={cancelDelete}>
-                      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: '24px 28px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', maxWidth: 340, width: '90%', fontFamily: "'DM Sans', sans-serif" }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Delete {isNode ? 'node' : 'arrow'}?</div>
-                        <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.55, marginBottom: 20, fontFamily: "'Crimson Pro', serif" }}>
-                          {isNode ? `Remove ${label} and all its connected arrows?` : 'Remove this arrow from the diagram?'}
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                          <button onClick={cancelDelete} style={{ padding: '8px 16px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-                          <button onClick={confirmDelete} style={{ padding: '8px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Delete</button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-              </div>{/* end canvas */}
-            </div>{/* end canvas area */}
-          </div>{/* end body */}
         </div>
-      );
-    }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<ArgumentMapper />);
-  </script>
+        <div className="am-stage">
+          <div className="am-status" aria-hidden="true"><span className="am-mode">${MODE_NAME[mode]}</span><span>${hint()}</span></div>
+          <div className=${"am-board" + (panning ? " is-panning" : "") + (picking ? " is-picking" : "")} ref=${boardRef} role="region"
+            aria-label="Argument map" aria-describedby="am-board-help" tabIndex="-1"
+            style=${{ backgroundSize: GRID * vp.scale + "px " + GRID * vp.scale + "px", backgroundPosition: vp.x + "px " + vp.y + "px" }}
+            onPointerDown=${onBoardPointerDown} onClick=${onBoardClick}>
+            <p className="am-sr" id="am-board-help">Each claim is a button. Tab moves between claims. Enter edits a claim, the arrow keys move it, Delete removes it. The panel for the selected claim draws arrows. The standard form below the board reads the whole map.</p>
+            <div className="am-layer" style=${{ transform: "translate(" + vp.x + "px, " + vp.y + "px) scale(" + vp.scale + ")" }}>
+              <svg className="am-svg" aria-hidden="true" focusable="false">
+                ${geoms.map(({ ed, g }) => html`<g key=${ed.id} className=${"am-edge am-edge--" + ed.kind + (selEdge && selEdge.id === ed.id ? " is-selected" : "")} onClick=${ev => onEdgeClick(ev, ed)}>
+                  ${g.bracket && html`<polyline className="am-hit" points=${ptsAttr(g.bracket)} />`}
+                  ${g.bracket && html`<polyline className="am-stroke" points=${ptsAttr(g.bracket)} />`}
+                  <line className="am-hit" x1=${g.start.x} y1=${g.start.y} x2=${g.base.x} y2=${g.base.y} />
+                  <line className="am-stroke" x1=${g.start.x} y1=${g.start.y} x2=${g.base.x} y2=${g.base.y} />
+                  <polygon className="am-head" points=${ptsAttr(g.head)} />
+                  ${ed.kind === "objects" && g.len >= 96 && html`<rect className="am-edge-patch" x=${g.mid.x - 38} y=${g.mid.y - 9} width="76" height="18" />`}
+                  ${ed.kind === "objects" && g.len >= 96 && html`<text className="am-edge-label" x=${g.mid.x} y=${g.mid.y + 4} textAnchor="middle">objects to</text>`}
+                </g>`)}
+                ${preview && html`<polyline className="am-preview" points=${ptsAttr(bracketPts(preview, true))} />`}
+                ${box && box.w > 2 && box.h > 2 && html`<rect className="am-boxsel" x=${box.x} y=${box.y} width=${box.w} height=${box.h} />`}
+              </svg>
+              ${doc.nodes.map(n => {
+                const r = an.role[n.id], lab = an.display[n.id], isEd = editing === n.id;
+                const selected = (selNode && selNode.id === n.id) || multi.includes(n.id);
+                const isChosen = chosen.includes(n.id) || source === n.id;
+                const cls = "am-card" + (r === "main" ? " am-card--main" : r === "trib" ? " am-card--trib" : "") + (an.isObj[n.id] ? " am-card--objection" : "")
+                  + (isEd ? " is-editing" : isChosen ? " is-chosen" : selected ? " is-selected" : "");
+                const labCls = "am-card-label" + (an.isObj[n.id] || r === "objection" || r === "reply" ? " am-card-label--objection" : r === "objsupport" ? " am-card-label--plain" : "");
+                const ls = an.labels[n.id] || [];
+                const aria = ROLE_WORD[r] + (ls.length ? " " + ls.join(", ") : "") + (an.isObj[n.id] && ls.length ? ", objection" : "") + ": " + n.text
+                  + (isChosen ? (source === n.id ? ". Start of the arrow" : ". Chosen to join") : "");
+                return html`<div key=${n.id} data-node=${n.id} ref=${cardRef(n.id)} className=${cls}
+                  role=${isEd ? "group" : "button"} tabIndex=${isEd ? null : "0"} aria-label=${isEd ? "Editing claim" : aria}
+                  style=${{ left: n.x + "px", top: n.y + "px" }}
+                  onPointerDown=${ev => onCardPointerDown(ev, n.id)}
+                  onClick=${ev => onCardClick(ev, n.id)}
+                  onDoubleClick=${ev => { ev.stopPropagation(); if (mode === "select") startEdit(n.id); }}
+                  onKeyDown=${ev => onCardKey(ev, n.id)}
+                  onFocus=${ev => { if (ev.target === ev.currentTarget) onCardFocus(ev, n.id); }}>
+                  ${lab && html`<span className=${labCls} aria-hidden="true">${lab}</span>`}
+                  ${isEd
+                    ? html`<textarea className="am-card-edit" aria-label="Claim text. Enter saves, Escape cancels." value=${editText} autoFocus=${true}
+                        rows=${Math.max(2, Math.ceil(editText.length / 24))}
+                        onChange=${ev => setEditText(ev.target.value)}
+                        onKeyDown=${ev => {
+                          ev.stopPropagation();
+                          if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); finishEdit(true); }
+                          if (ev.key === "Escape") { ev.preventDefault(); finishEdit(false); }
+                        }}
+                        onBlur=${() => finishEdit(true)}
+                        onPointerDown=${ev => ev.stopPropagation()}
+                        onClick=${ev => ev.stopPropagation()} />`
+                    : html`<span className="am-card-text" aria-hidden="true">${n.text}</span>`}
+                </div>`;
+              })}
+            </div>
+            ${doc.nodes.length === 0 && html`<div className="am-empty" aria-hidden="true">Add a claim to begin.</div>`}
+          </div>
+        </div>
+      </div>
+
+      <section className="am-output" aria-labelledby="am-out-h">
+        <div className="am-section-head">
+          <h2 className="am-h2" id="am-out-h">Standard form</h2>
+          <div className="am-row" style=${{ marginTop: 0 }}>
+            <button type="button" className="am-btn am-btn--solid" onClick=${copyOut} disabled=${!an.text}>${copied ? "Copied" : "Copy"}</button>
+            <button type="button" className="am-btn" onClick=${downloadTxt} disabled=${!an.text}>Download .txt</button>
+          </div>
+        </div>
+        <div className="am-preview-box" tabIndex="0" role="region" aria-label="Standard form text">
+          ${an.text
+            ? html`<pre className="am-pre">${an.text}</pre>`
+            : html`<p className="am-pre am-pre--empty">Draw a support arrow and the argument appears here in standard form.</p>`}
+        </div>
+        ${an.notes.map((nt, i) => html`<p key=${i} className=${"am-note" + (nt.warn ? " am-note--warn" : "")}>${nt.text}</p>`)}
+      </section>
+
+      <details className="am-help">
+        <summary>How the map works</summary>
+        <div className="am-help-body">
+          <p><strong>Claims.</strong> Type a claim and add it, then drag it where you want it. Double-click a claim, or select it and press Enter, to change its words.</p>
+          <p><strong>Support arrows</strong> run from a reason to the claim it supports. Choose Supports, then the reason, then the claim it supports.</p>
+          <p><strong>Joint support.</strong> When two or more supports only work together, choose Join supports: they share one arrow under a bracket. In standard form they are separate S lines in the same argument.</p>
+          <p><strong>Objections</strong> are dashed arrows. Choose Objects to, then the objection, then the claim it objects to. An objection to an objection is a reply. Objections are listed after the argument.</p>
+          <p><strong>Labels</strong> follow the Schematized Argument Builder. Supports are S1, S2, and so on, numbered left to right as they sit on the board. The claim the arrows end at is the conclusion, C. A claim that is supported and also supports another claim is a tributary conclusion, Cd1, Cd2, and so on; its line in the main argument ends in [= Cd1].</p>
+          <p><strong>Keyboard.</strong> Tab to a claim. Enter edits it, the arrow keys move it (Shift moves it farther), Delete removes it. The panel for the selected claim draws arrows without a mouse. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> redoes (<kbd>Command</kbd> on a Mac).</p>
+          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
+          <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map.</p>
+        </div>
+      </details>
+
+      <dialog className="am-dialog" ref=${dialogRef} aria-labelledby="am-dlg-h" onCancel=${ev => { ev.preventDefault(); setConfirm(null); }}>
+        <h2 id="am-dlg-h">${confirm && confirm.kind === "many" ? "Delete " + confirm.ids.length + " claims?" : "Clear the board?"}</h2>
+        <p>${confirm && confirm.kind === "many" ? "Their arrows go too. Undo puts them back." : "Every claim and arrow comes off the board. Undo brings them back."}</p>
+        <div className="am-row" style=${{ justifyContent: "flex-end", marginTop: "1.1rem" }}>
+          <button type="button" className="am-btn" autoFocus=${true} onClick=${() => setConfirm(null)}>Cancel</button>
+          <button type="button" className="am-btn am-btn--solid" onClick=${confirmYes}>${confirm && confirm.kind === "many" ? "Delete" : "Clear"}</button>
+        </div>
+      </dialog>
+
+      <div className="am-sr" role="status" aria-live="polite">${live}</div>
+    <//>`;
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(e(App));
+})();
+</script>
 </body>
 </html>
