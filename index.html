@@ -323,6 +323,7 @@
   .am-board:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .am-layer { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
   .am-svg { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+  .am-svg--top { z-index: 5; }
   .am-empty {
     position: absolute;
     inset: 0;
@@ -384,6 +385,40 @@
     overflow: hidden;
   }
   .am-card.is-editing { outline: 2px solid var(--accent); outline-offset: 3px; cursor: text; z-index: 4; }
+  .am-card.is-target { outline: 2px solid var(--accent); outline-offset: 3px; z-index: 2; }
+  .am-card.is-target--objects { outline-color: var(--wrong); }
+
+  /* The link handle: a dot on each claim's top edge. Drag it to another claim to draw an arrow. */
+  .am-link-handle {
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+    background: var(--field);
+    cursor: crosshair;
+    opacity: 0;
+    touch-action: none;
+    transition: opacity 0.12s;
+  }
+  .am-link-handle::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; }
+  .am-link-handle::after { content: ""; position: absolute; inset: 3.5px; border-radius: 50%; background: var(--accent); }
+  .am-card:hover .am-link-handle, .am-card.is-selected .am-link-handle, .am-card:focus-visible .am-link-handle,
+  .am-card.is-linking .am-link-handle { opacity: 1; }
+  .am-link-handle:hover { background: var(--accent-wash); }
+  .am-board.is-dragging-link .am-card:not(.is-linking) .am-link-handle { opacity: 0; }
+  .am-board.is-dragging-link, .am-board.is-dragging-link .am-card { cursor: crosshair; }
+  @media (hover: none) { .am-link-handle { opacity: 1; } }
+  .am-link-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+  .am-link-head { fill: var(--accent); pointer-events: none; }
+  .am-link--objects .am-link-line { stroke: var(--wrong); }
+  .am-link--objects .am-link-head { fill: var(--wrong); }
+  .am-link-tag { fill: var(--accent); font-family: var(--mono); font-size: 11px; font-weight: 500; pointer-events: none; }
+  .am-link--objects .am-link-tag { fill: var(--wrong); }
+  .am-link-tagbg { fill: var(--paper); pointer-events: none; }
 
   .am-stroke { fill: none; stroke: var(--ink); stroke-width: 1.8; }
   .am-head { fill: var(--ink); }
@@ -1119,6 +1154,7 @@
     const [newTarget, setNewTarget] = useState("");
     const [storageOk, setStorageOk] = useState(true);
     const [panning, setPanning] = useState(false);
+    const [link, setLink] = useState(null);
 
     const boardRef = useRef(null), fileRef = useRef(null), dialogRef = useRef(null), addRef = useRef(null);
     const gesture = useRef(null), pointers = useRef(new Map()), suppressClick = useRef(false);
@@ -1260,13 +1296,15 @@
     const MODE_NAME = { select: "Select", connect: edgeKind === "supports" ? "Supports" : "Objects to", join: "Join supports", "join-target": "Join supports", delete: "Delete" };
     const hint = () => {
       const verb = edgeKind === "supports" ? "supports" : "objects to";
-      if (mode === "connect") return source ? "Now choose the claim it " + verb + "." : "Choose the claim the arrow starts from: the " + (edgeKind === "supports" ? "reason." : "objection.");
+      if (mode === "connect" && !link) return source ? "Now choose the claim it " + verb + "." : "Choose the claim the arrow starts from: the " + (edgeKind === "supports" ? "reason." : "objection.");
       if (mode === "join") return chosen.length < 2 ? "Choose the supports that work together (" + chosen.length + " chosen)." : chosen.length + " chosen. Choose more, or press Next.";
       if (mode === "join-target") return "Choose the claim they support together.";
       if (mode === "delete") return "Choose a claim or an arrow to delete.";
       if (multi.length > 1) return multi.length + " claims selected. Drag one to move them all.";
-      return COARSE ? "Drag a claim to move it. Drag the board to look around. Pinch to zoom."
-        : "Drag a claim to move it. Drag the board to look around. Shift + drag selects several. Pinch or Ctrl + scroll zooms.";
+      if (link) return link.over ? "Let go to draw the arrow." + (COARSE ? "" : " Alt (Option on a Mac) switches between support and objection.")
+        : "Drag onto the claim it " + (link.kind === "supports" ? "supports." : "objects to.");
+      return COARSE ? "Drag the dot on a claim to another claim to draw an arrow. Drag a claim to move it. Pinch to zoom."
+        : "Drag the dot on a claim's top edge to another claim to draw an arrow. Drag a claim to move it. Shift + drag selects several. Ctrl + scroll zooms.";
     };
     const switchMode = (m, kind) => {
       setMode(m);
@@ -1457,6 +1495,28 @@
         vp0: vpRef.current,
       };
       setBox(null);
+      setLink(null);
+    };
+    /* Dragging a claim's link handle onto another claim draws an arrow from it. Support by default
+       (or whatever the Objects to tool is set to); Alt / Option switches to the other kind. */
+    const linkKind = alt => {
+      const base = mode === "connect" ? edgeKind : "supports";
+      return alt ? (base === "supports" ? "objects" : "supports") : base;
+    };
+    const claimAt = (x, y) => {
+      const el = document.elementFromPoint(x, y);
+      const card = el && el.closest ? el.closest("[data-node]") : null;
+      return card ? card.getAttribute("data-node") : null;
+    };
+    const onHandlePointerDown = (ev, id) => {
+      ev.stopPropagation();
+      suppressClick.current = false;
+      pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pointers.current.size === 2) { startPinch(); return; }
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      if (mode !== "select" && mode !== "connect") return;
+      ev.preventDefault();
+      gesture.current = { type: "link", src: id, x0: ev.clientX, y0: ev.clientY, moved: false };
     };
     const onCardPointerDown = (ev, id) => {
       if (editing === id) return;
@@ -1502,6 +1562,11 @@
       if (!g.moved) { g.moved = true; if (g.type === "pan") setPanning(true); }
       if (g.type === "pan") { setVp({ scale: g.vp0.scale, x: g.vp0.x + dx, y: g.vp0.y + dy }); return; }
       const c = toCanvas(ev.clientX, ev.clientY);
+      if (g.type === "link") {
+        const over = claimAt(ev.clientX, ev.clientY);
+        setLink({ src: g.src, x: c.x, y: c.y, over: over && over !== g.src ? over : null, kind: linkKind(ev.altKey) });
+        return;
+      }
       if (g.type === "drag") {
         const cur = docRef.current;
         setDoc({ nodes: cur.nodes.map(n => (g.offs[n.id] ? Object.assign({}, n, { x: snapV(c.x - g.offs[n.id].x), y: snapV(c.y - g.offs[n.id].y) }) : n)), edges: cur.edges });
@@ -1518,6 +1583,21 @@
         return;
       }
       if (g.moved) suppressClick.current = true;
+      if (g.type === "link") {
+        if (ev.type === "pointercancel") { setLink(null); gesture.current = null; return; }
+        suppressClick.current = true;
+        setLink(null);
+        gesture.current = null;
+        if (!g.moved) {
+          if (mode === "select") { setMulti([]); setSel({ type: "node", id: g.src }); }
+          announce("Drag the dot onto another claim to draw an arrow.");
+          return;
+        }
+        const tgt = claimAt(ev.clientX, ev.clientY);
+        if (tgt && tgt !== g.src) addArrow(linkKind(ev.altKey), g.src, tgt);
+        else announce("No arrow drawn. Let go over another claim to draw one.");
+        return;
+      }
       if (g.type === "drag" && g.moved) pushPast(g.start);
       if (g.type === "box" && g.moved && box) {
         const ids = docRef.current.nodes.filter(n => n.x < box.x + box.w && n.x + NODE_W > box.x && n.y < box.y + box.h && n.y + getH(n.id) > box.y).map(n => n.id);
@@ -1699,6 +1779,18 @@
 
     const geoms = doc.edges.map(ed => ({ ed, g: edgeGeom(ed, byId, getH) })).filter(x => x.g);
     const preview = (mode === "join" || mode === "join-target") && chosen.length >= 2 ? groupBox(chosen, byId, getH) : null;
+    const linkGeom = (() => {
+      if (!link || !byId[link.src]) return null;
+      const sb = boxOf(byId[link.src], getH(link.src));
+      const tb = link.over && byId[link.over] ? boxOf(byId[link.over], getH(link.over)) : null;
+      const aim = tb ? centerOf(tb) : { x: link.x, y: link.y };
+      const start = edgePoint(sb, aim.x, aim.y, 2);
+      const end = tb ? edgePoint(tb, start.x, start.y, 4) : aim;
+      const tag = { x: link.x + 14, y: link.y - 10 };
+      if (Math.hypot(end.x - start.x, end.y - start.y) < HEAD_L + 2) return { tag };
+      const hd = arrowHead(start, end);
+      return { start, base: hd.base, head: hd.pts, tag };
+    })();
 
     const toolBtn = (label, pressed, onClick, extra) => html`<button type="button" className=${"am-tool" + (extra || "")} aria-pressed=${pressed ? "true" : "false"} onClick=${onClick}>${label}</button>`;
 
@@ -1765,7 +1857,7 @@
             ${mode === "connect" && html`<section className="am-panel" aria-labelledby="am-conn-h">
               <h2 className="am-h2" id="am-conn-h">${edgeKind === "supports" ? "Draw a support arrow" : "Draw an objection"}</h2>
               ${source
-                ? html`<p className="am-desc">From ${an.ref(source)}: ${clip(byId[source] ? byId[source].text : "", 80)}</p>
+                ? html`<p className="am-desc">From ${an.labels[source] && an.labels[source].length ? an.labels[source][0] : ""}: ${clip(byId[source] ? byId[source].text : "", 80)}</p>
                        <p className="am-note">Now choose the claim it ${edgeKind === "supports" ? "supports" : "objects to"}.</p>
                        <div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => { setSource(null); announce("Start claim cleared."); }}>Choose a different start</button></div>`
                 : html`<p className="am-note">Choose the ${edgeKind === "supports" ? "reason" : "objection"} on the board, then the claim it ${edgeKind === "supports" ? "supports" : "objects to"}. With the keyboard, Tab to a claim and press Enter.</p>`}
@@ -1843,7 +1935,7 @@
 
         <div className="am-stage">
           <div className="am-status" aria-hidden="true"><span className="am-mode">${MODE_NAME[mode]}</span><span>${hint()}</span></div>
-          <div className=${"am-board" + (panning ? " is-panning" : "") + (picking ? " is-picking" : "")} ref=${boardRef} role="region"
+          <div className=${"am-board" + (panning ? " is-panning" : "") + (picking ? " is-picking" : "") + (link ? " is-dragging-link" : "")} ref=${boardRef} role="region"
             aria-label="Argument map" aria-describedby="am-board-help" tabIndex="-1"
             style=${{ backgroundSize: GRID * vp.scale + "px " + GRID * vp.scale + "px", backgroundPosition: vp.x + "px " + vp.y + "px" }}
             onPointerDown=${onBoardPointerDown} onClick=${onBoardClick}>
@@ -1862,12 +1954,21 @@
                 ${preview && html`<polyline className="am-preview" points=${ptsAttr(bracketPts(preview, true))} />`}
                 ${box && box.w > 2 && box.h > 2 && html`<rect className="am-boxsel" x=${box.x} y=${box.y} width=${box.w} height=${box.h} />`}
               </svg>
+              <svg className="am-svg am-svg--top" aria-hidden="true" focusable="false">
+                ${linkGeom && html`<g className=${"am-link am-link--" + link.kind}>
+                  ${linkGeom.start && html`<line className="am-link-line" x1=${linkGeom.start.x} y1=${linkGeom.start.y} x2=${linkGeom.base.x} y2=${linkGeom.base.y} />`}
+                  ${linkGeom.head && html`<polygon className="am-link-head" points=${ptsAttr(linkGeom.head)} />`}
+                  <rect className="am-link-tagbg" x=${linkGeom.tag.x - 4} y=${linkGeom.tag.y - 12} width=${link.kind === "supports" ? 70 : 84} height="17" />
+                  <text className="am-link-tag" x=${linkGeom.tag.x} y=${linkGeom.tag.y}>${link.kind === "supports" ? "supports" : "objects to"}</text>
+                </g>`}
+              </svg>
               ${doc.nodes.map(n => {
                 const r = an.role[n.id], lab = an.display[n.id], isEd = editing === n.id;
                 const selected = (selNode && selNode.id === n.id) || multi.includes(n.id);
                 const isChosen = chosen.includes(n.id) || source === n.id;
                 const cls = "am-card" + (r === "main" ? " am-card--main" : r === "trib" ? " am-card--trib" : "") + (an.isObj[n.id] ? " am-card--objection" : "")
-                  + (isEd ? " is-editing" : isChosen ? " is-chosen" : selected ? " is-selected" : "");
+                  + (isEd ? " is-editing" : isChosen ? " is-chosen" : selected ? " is-selected" : "")
+                  + (link && link.over === n.id ? " is-target" + (link.kind === "objects" ? " is-target--objects" : "") : "") + (link && link.src === n.id ? " is-linking" : "");
                 const labCls = "am-card-label" + (an.isObj[n.id] || r === "objection" || r === "reply" ? " am-card-label--objection" : r === "objsupport" ? " am-card-label--plain" : "");
                 const ls = an.labels[n.id] || [];
                 const aria = ROLE_WORD[r] + (ls.length ? " " + ls.join(", ") : "") + (an.isObj[n.id] && ls.length ? ", objection" : "") + ": " + n.text
@@ -1894,6 +1995,9 @@
                         onPointerDown=${ev => ev.stopPropagation()}
                         onClick=${ev => ev.stopPropagation()} />`
                     : html`<span className="am-card-text" aria-hidden="true">${n.text}</span>`}
+                  ${!isEd && (mode === "select" || mode === "connect") && html`<span className="am-link-handle" aria-hidden="true"
+                    title="Drag to another claim to draw an arrow. Hold Alt (Option on a Mac) for the other kind."
+                    onPointerDown=${ev => onHandlePointerDown(ev, n.id)} />`}
                 </div>`;
               })}
             </div>
