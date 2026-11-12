@@ -540,16 +540,21 @@
   .am-shell { padding-top: 0; }
   .am-masthead {
     margin-inline: calc(50% - 50vw);
-    padding: clamp(1.25rem, 3vw, 2.25rem) calc(50vw - 50%) clamp(1.5rem, 3vw, 2.25rem);
+    padding: 0.7rem calc(50vw - 50%);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem 1.25rem;
     border-bottom: 0;
     background: var(--navy);
     color: var(--cream);
   }
   .am-masthead :focus-visible { outline-color: currentColor; }
   .am-homelink { color: inherit; font-weight: 500; }
-  .am-eyebrow { margin-top: 1.4rem; color: inherit; }
-  .am-title { font-weight: 800; font-size: clamp(2.5rem, 6.5vw, 4.75rem); line-height: 0.92; letter-spacing: -0.005em; }
-  .am-masthead .am-intro { margin-top: 1.1rem; color: inherit; }
+  .am-eyebrow { order: 3; margin: 0 0 0 auto; color: inherit; }
+  .am-title { order: 2; font-weight: 800; font-size: 1.3rem; line-height: 1.15; letter-spacing: 0.02em; }
+  .am-shell { gap: 1rem; }
+  .am-main > .am-intro { margin: 0; max-width: 60rem; color: var(--graphite); font-size: 0.95rem; line-height: 1.55; }
 
   .am-h2 { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 0.95rem; letter-spacing: 0.03em; }
   .am-h3 { color: var(--ink); }
@@ -590,10 +595,10 @@
     <a class="am-homelink" id="am-homelink" href="https://maxwellunlimited.com/workshop.html">← Workshop</a>
     <p class="am-eyebrow">Argument structure · MU-W-001 · Public Beta</p>
     <h1 class="am-title">Argument Mapper</h1>
-    <p class="am-intro">Type each claim and add it to the board, then draw arrows. A support arrow runs from a reason to the claim it supports; a dashed arrow marks an objection.</p>
   </header>
 
   <main class="am-main" id="main">
+    <p class="am-intro">Type each claim and add it to the board, then draw arrows. A support arrow runs from a reason to the claim it supports; a dashed arrow marks an objection.</p>
     <div id="root"></div>
     <noscript><p class="am-intro">This tool needs JavaScript. Turn it on and reload the page.</p></noscript>
   </main>
@@ -1402,7 +1407,7 @@
       const doc = readDoc(data);
       if (!doc) return null;
       const vp = data.vp && [data.vp.x, data.vp.y, data.vp.scale].every(Number.isFinite) ? data.vp : null;
-      return { doc, vp, snap: !!data.snap, top: data.top !== false };
+      return { doc, vp, snap: !!data.snap, top: data.top !== false, pass: data.pass === true };
     } catch (err) { return null; }
   }
   var SAVED = loadSaved();
@@ -1454,7 +1459,7 @@
     const [link, setLink] = useState(null);
     const [notice, setNotice] = useState(null);
     const [linkCopied, setLinkCopied] = useState(false);
-    const [showPassage, setShowPassage] = useState(() => !!(SAVED && SAVED.doc.passage));
+    const [showPassage, setShowPassage] = useState(() => !!(SAVED && SAVED.pass));
     const [passEdit, setPassEdit] = useState(null);
     const [selRange, setSelRange] = useState(null);
     const passRef = useRef(null);
@@ -1479,12 +1484,12 @@
     useEffect(() => {
       const t = setTimeout(() => {
         try {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, nodes: doc.nodes, edges: doc.edges, passage: doc.passage || "", vp, snap, top: concTop }));
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, nodes: doc.nodes, edges: doc.edges, passage: doc.passage || "", vp, snap, top: concTop, pass: showPassage }));
           if (!storageOk) setStorageOk(true);
         } catch (err) { setStorageOk(false); }
       }, 250);
       return () => clearTimeout(t);
-    }, [doc, vp, snap, concTop]);
+    }, [doc, vp, snap, concTop, showPassage]);
 
     /* ── history ── */
     const commit = (next, msg) => {
@@ -2177,7 +2182,7 @@
         if (!next) { announce("That file isn't a saved argument map, so nothing changed."); window.alert("That file isn't a saved argument map, so nothing changed."); return; }
         const had = docRef.current.nodes.length > 0;
         commit(next, "Map opened" + (had ? ". Undo goes back to the map you had." : "."));
-        if (next.passage) setShowPassage(true);
+        setShowPassage(false);
         setPassEdit(null);
         dropStale(next);
         cancelModes();
@@ -2194,7 +2199,7 @@
       setSel(null);
       setMulti([]);
       setNotice(had ? msg + " The map you had before is one Undo away." : null);
-      if (next.passage) setShowPassage(true);
+      setShowPassage(false);
       setPassEdit(null);
       setTimeout(() => fitTo(1), 80);
     };
@@ -2314,7 +2319,7 @@
         </div>
         <div className="am-group">
           <button type="button" className="am-tool" aria-pressed=${showPassage ? "true" : "false"} aria-controls="am-passage" onClick=${() => setShowPassage(v => !v)}
-            title="Work from a passage: paste it, then highlight the parts that are claims">Passage</button>
+            title=${doc.passage ? "This map has a passage: the text it was made from" : "Work from a passage: paste it, then highlight the parts that are claims"}>${showPassage ? "Hide passage" : doc.passage ? "Show passage" : "Passage"}</button>
           <select className="am-tool am-tool--select" aria-label="Open an example map" value="" disabled=${!!editing}
             onChange=${ev => { const v = ev.target.value; if (v !== "") openExample(+v); }}>
             <option value="">Examples…</option>
@@ -2571,8 +2576,8 @@
           <p><strong>Keyboard.</strong> Tab to a claim. Enter edits it, the arrow keys move it (Shift moves it farther), Delete removes it. The panel for the selected claim draws arrows without a mouse. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> redoes (<kbd>Command</kbd> on a Mac).</p>
           <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Tidy arranges the map for you: the conclusion on top, its supports in a row underneath, objections beside the claim they object to. Turn off Conclusion on top and Tidy turns the tree over: supports above, the conclusion at the bottom. Undo puts the claims back. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
           <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map. Copy link puts the whole map into a link: anyone who opens it gets their own copy, and nothing is stored on a server.</p>
-          <p><strong>Working from a passage.</strong> Press Passage and paste the text you are mapping. Highlight a sentence, or part of one, and make it a claim. The words you used stay shaded in the passage and carry the claim's label, so you can see what you have covered. Reword each claim on the board so it stands alone: the shading still shows where it came from. The passage is saved with the map and travels in a shared link.</p>
-          <p><strong>Examples.</strong> The Examples menu opens a finished map, with its passage, to study or change. If you had a map on the board, Undo brings it back.</p>
+          <p><strong>Working from a passage.</strong> Press Passage and paste the text you are mapping. Highlight a sentence, or part of one, and make it a claim. The words you used stay shaded in the passage and carry the claim's label, so you can see what you have covered. Reword each claim on the board so it stands alone: the shading still shows where it came from. The passage is saved with the map and travels in a shared link. It stays out of the way until you ask for it: when a map has one, the button reads Show passage.</p>
+          <p><strong>Examples.</strong> The Examples menu opens a finished map to study or change. Press Show passage to read the text it was made from. If you had a map on the board, Undo brings it back.</p>
         </div>
       </details>
 
