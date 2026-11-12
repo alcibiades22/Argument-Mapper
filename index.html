@@ -15,13 +15,13 @@
 <meta property="og:image" content="https://maxwellunlimited.com/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Maxwell Unlimited wordmark beside Diagram 17B, a network of labeled points joined by fine lines.">
+<meta property="og:image:alt" content="The Maxwell Unlimited homepage: the wordmark beside three panels, Research, Workshop, and Contact, where Maxwell and his demon study a diagram, build a device, and wait by a mailbox.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="https://maxwellunlimited.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://maxwellunlimited.com/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400&family=Overpass+Mono:wght@400;500&family=Overpass:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400&family=Overpass+Mono:wght@400;500&family=Overpass:wght@400;500;800&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.umd.min.js"></script>
@@ -45,7 +45,7 @@
     --mono: "Overpass Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     --display: "Overpass", "Helvetica Neue", Arial, sans-serif;
     --prose: "Source Serif 4", Georgia, "Times New Roman", serif;
-    --board-h: clamp(28rem, 70vh, 54rem);
+    --board-h: clamp(30rem, 76vh, 60rem);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -166,31 +166,51 @@
   .am-main { min-width: 0; display: grid; gap: 1rem; align-content: start; }
 
   /* ── toolbar ── */
-  .am-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; }
-  .am-group { display: inline-flex; flex-wrap: wrap; }
+  /* One strip: the tools are plain words, grouped by hairlines. Only the tool in use is filled. */
+  .am-toolbar { display: flex; flex-wrap: wrap; gap: 0.25rem 0; align-items: center; padding: 0.3rem 0.35rem; border: 1px solid var(--edge); background: var(--field); }
+  .am-group { display: inline-flex; flex-wrap: wrap; gap: 0.1rem; margin-right: 0.45rem; padding-right: 0.45rem; border-right: 1px solid var(--line); }
+  .am-group:last-of-type { margin-right: 0; padding-right: 0; border-right: 0; }
   .am-tool {
     position: relative;
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    min-height: 2.5rem;
-    padding: 0.45rem 0.75rem;
-    border: 1px solid var(--edge);
-    background: var(--field);
+    min-height: 2.25rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid transparent;
+    background: none;
     color: var(--ink);
     font-family: var(--mono);
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     white-space: nowrap;
   }
-  .am-group .am-tool + .am-tool { margin-left: -1px; }
-  .am-tool:hover:enabled { border-color: var(--accent); color: var(--accent); z-index: 1; }
+  .am-tool:hover:enabled { background: var(--accent-wash); color: var(--accent); z-index: 1; }
   .am-tool:focus-visible { z-index: 2; }
   .am-tool[aria-pressed="true"] { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-fg); z-index: 1; }
   .am-tool--objects { color: var(--wrong); }
   .am-tool--objects[aria-pressed="true"] { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
   .am-tool svg { flex: none; }
+  .am-tool--select { cursor: pointer; border-radius: 0; text-transform: uppercase; max-width: 100%; padding-right: 0.2rem; }
+  .am-notice { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; margin: 0.7rem 0 0; padding: 0.55rem 0.75rem; border: 1px solid var(--edge); border-left: 3px solid var(--accent); background: var(--field); color: var(--ink); font-size: 0.86rem; }
+  .am-passage { margin: 1rem 0 1.1rem; }
+  .am-panel.am-passage { padding: 0; border: 0; background: none; }
+  .am-passage-body { display: grid; gap: 0.2rem 1.2rem; }
+  @media (min-width: 900px) {
+    .am-passage-body { grid-template-columns: minmax(0, 46rem) minmax(13rem, 1fr); align-items: start; }
+    .am-passage-side .am-note { margin-top: 0.5rem; }
+  }
+  .am-passage-text {
+    max-height: 15rem; overflow: auto; margin-top: 0.5rem; padding: 0.6rem 0.75rem;
+    border: 1px solid var(--edge); background: var(--paper); color: var(--ink);
+    font-family: var(--prose); font-size: 1rem; line-height: 1.7; white-space: pre-wrap;
+    -webkit-user-select: text; user-select: text; cursor: text;
+  }
+  .am-sent:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .am-src { background: var(--accent-wash); color: inherit; border-bottom: 1px solid var(--accent); cursor: pointer; }
+  .am-src.is-active { border-bottom-width: 3px; background: transparent; outline: 1px solid var(--accent); }
+  .am-src[data-label]::after { content: attr(data-label); margin-left: 0.25em; font-family: var(--mono); font-size: 0.62rem; font-weight: 500; vertical-align: super; line-height: 0; }
   .am-tool--num { min-width: 4.4rem; justify-content: center; font-variant-numeric: tabular-nums; }
 
   /* ── workspace ── */
@@ -202,7 +222,12 @@
     min-width: 0;
     max-height: calc(var(--board-h) + 2.6rem);
     overflow-y: auto;
+    padding-right: 0.5rem;
   }
+  /* The side column is one quiet list of sections, not a stack of boxes. */
+  .am-side .am-panel { padding: 0.9rem 0 0; border: 0; border-top: 1px solid var(--line); background: none; }
+  .am-side .am-add { padding-top: 0; border-top: 0; }
+  .am-side .am-textarea, .am-side .am-select { background: var(--field); }
   .am-panels { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
   .am-panel { padding: 0.9rem; border: 1px solid var(--edge); background: var(--field); min-width: 0; }
   .am-h2 {
@@ -294,7 +319,7 @@
     gap: 0.6rem;
     min-height: 2.6rem;
     padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid var(--line);
+    border-top: 1px solid var(--line);
     color: var(--graphite);
     font-size: 0.76rem;
     line-height: 1.45;
@@ -341,34 +366,39 @@
     position: absolute;
     width: 224px;
     min-height: 60px;
-    padding: 9px 12px;
+    padding: 11px 14px;
     border: 1px solid var(--edge);
     background: var(--field);
     color: var(--ink);
     font-family: var(--prose);
     font-size: 16px;
-    line-height: 1.4;
+    line-height: 1.45;
     cursor: grab;
     touch-action: none;
   }
   .am-board.is-picking .am-card { cursor: pointer; }
-  .am-card--main { border: 2px solid var(--ink); padding: 8px 11px; }
+  .am-card--main { border: 2px solid var(--ink); padding: 10px 13px; }
   .am-card--trib { border-color: var(--ink); }
   .am-card--objection { border-style: dashed; border-color: var(--wrong); }
   .am-card.is-selected { outline: 2px solid var(--accent); outline-offset: 3px; z-index: 2; }
   .am-card.is-chosen { outline: 2px dashed var(--accent); outline-offset: 3px; z-index: 2; }
   .am-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; z-index: 3; }
+  /* The label is a small tab. The conclusion's is solid ink, a tributary conclusion's solid navy. */
   .am-card-label {
-    display: block;
-    margin-bottom: 3px;
+    display: table;
+    margin: 0 0 5px;
+    padding: 1px 6px;
+    background: var(--accent-wash);
     color: var(--accent);
     font-family: var(--mono);
     font-size: 11px;
     font-weight: 500;
     line-height: 14px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
   }
-  .am-card-label--objection { color: var(--wrong); }
+  .am-card-label--main { background: var(--ink); color: var(--paper); }
+  .am-card-label--trib { background: var(--accent); color: var(--paper); }
+  .am-card-label--objection { background: var(--wrong-wash); color: var(--wrong); }
   .am-card-label--plain { color: var(--graphite); }
   .am-card-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
   .am-card-edit {
@@ -420,11 +450,11 @@
   .am-link--objects .am-link-tag { fill: var(--wrong); }
   .am-link-tagbg { fill: var(--paper); pointer-events: none; }
 
-  .am-stroke { fill: none; stroke: var(--ink); stroke-width: 1.8; }
+  .am-stroke { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: square; }
   .am-head { fill: var(--ink); }
-  .am-edge--objects .am-stroke { stroke: var(--wrong); stroke-dasharray: 7 5; }
+  .am-edge--objects .am-stroke { stroke: var(--wrong); stroke-dasharray: 7 5; stroke-linecap: butt; }
   .am-edge--objects .am-head { fill: var(--wrong); }
-  .am-edge.is-selected .am-stroke { stroke: var(--accent); stroke-width: 2.8; stroke-dasharray: none; }
+  .am-edge.is-selected .am-stroke { stroke: var(--accent); stroke-width: 3; stroke-dasharray: none; }
   .am-edge.is-selected .am-head { fill: var(--accent); }
   .am-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
   .am-edge-label {
@@ -511,10 +541,8 @@
   }
   /* On small screens the toolbar buttons sit apart, so a wrapped row never loses its edge. */
   @media (max-width: 600px) {
-    .am-toolbar { gap: 0.35rem 0.6rem; }
-    .am-group { gap: 0.3rem; }
-    .am-group .am-tool + .am-tool { margin-left: 0; }
-    .am-tool { min-height: 2.3rem; padding: 0.35rem 0.55rem; font-size: 0.68rem; letter-spacing: 0.06em; }
+    .am-group { margin-right: 0.25rem; padding-right: 0.25rem; }
+    .am-tool { min-height: 2.3rem; padding: 0.35rem 0.5rem; font-size: 0.68rem; letter-spacing: 0.06em; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
@@ -525,6 +553,57 @@
     .am-work { display: block; }
     .am-stage { border: 0; }
   }
+
+  /* ── Paperback: the site's look since 11/9/26, brought to this tool. A navy band (gold stays the accent), heavy
+     Overpass, ink rules, flat navy for what is active or concluded, brick for objections.
+     Still no shadows and no rounded corners. The band and the conclusion keep their colors in
+     the dark theme; every pair is at least 4.5:1. ── */
+  :root { --gold: #eeb211; --navy: #173a63; --band-ink: #151515; --cream: #f3f0e8; }
+  html { overflow-x: clip; }
+  .am-shell { padding-top: 0; }
+  .am-masthead {
+    margin-inline: calc(50% - 50vw);
+    padding: clamp(1.25rem, 3vw, 2.25rem) calc(50vw - 50%) clamp(1.5rem, 3vw, 2.25rem);
+    border-bottom: 0;
+    background: var(--navy);
+    color: var(--cream);
+  }
+  .am-masthead :focus-visible { outline-color: currentColor; }
+  .am-homelink { color: inherit; font-weight: 500; }
+  .am-eyebrow { margin-top: 1.4rem; color: inherit; }
+  .am-title { font-weight: 800; font-size: clamp(2.5rem, 6.5vw, 4.75rem); line-height: 0.92; letter-spacing: -0.005em; }
+  .am-masthead .am-intro { margin-top: 1.1rem; color: inherit; }
+
+  .am-h2 { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 0.95rem; letter-spacing: 0.03em; }
+  .am-h3 { color: var(--ink); }
+  .am-toolbar, .am-stage, .am-preview-box, .am-passage-text { border: 2px solid var(--ink); }
+  .am-tool:hover:enabled { background: var(--gold); color: var(--band-ink); }
+  .am-tool[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--paper); }
+  .am-tool--objects[aria-pressed="true"] { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
+  .am-textarea, .am-select, .am-btn { border-color: var(--ink); }
+  .am-btn:hover:enabled { border-color: var(--ink); background: var(--gold); color: var(--band-ink); }
+  .am-btn--solid:hover:enabled { border-color: var(--gold); background: var(--gold); color: var(--band-ink); }
+  .am-btn--danger { border-color: var(--wrong); }
+  .am-btn--danger:hover:enabled { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
+  .am-seg .am-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--paper); }
+  .am-seg .am-btn--obj { border-color: var(--wrong); }
+  .am-seg .am-btn--obj[aria-pressed="true"] { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
+  .am-notice { border: 2px solid var(--ink); border-left: 0.6rem solid var(--gold); }
+  .am-dialog { border: 3px solid var(--ink); }
+  .am-dialog h2 { font-weight: 800; letter-spacing: 0; }
+  .am-help summary { color: var(--ink); font-weight: 500; }
+
+  .am-card { padding: 10px 13px; border: 2px solid var(--ink); }
+  .am-card--main { padding: 10px 13px; border-color: var(--accent); background: var(--navy); color: var(--cream); }
+  .am-card--trib { border-color: var(--accent); }
+  .am-card--objection { border-style: dashed; border-color: var(--wrong); }
+  .am-card-edit { color: inherit; }
+  .am-card--main .am-card-edit::placeholder { color: inherit; opacity: 0.75; }
+  .am-card-label { padding: 0 5px; border: 1px solid var(--ink); background: none; color: var(--ink); }
+  .am-card-label--main { border-color: var(--gold); background: var(--gold); color: var(--band-ink); }
+  .am-card-label--trib { border-color: var(--accent); background: var(--accent); color: var(--paper); }
+  .am-card-label--objection { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
+  .am-card-label--plain { border-color: var(--graphite); background: none; color: var(--graphite); }
 </style>
 </head>
 <body>
@@ -587,7 +666,7 @@
   var STORAGE_KEY = "argumentMapper.v1";
   var NODE_W = 224, NODE_MIN_H = 60, GROUP_PAD = 14, GRID = 28;
   var ZOOM_MIN = 0.25, ZOOM_MAX = 2.5;
-  var HEAD_L = 11, HEAD_W = 5.5;
+  var HEAD_L = 13, HEAD_W = 6;
 
   function uid() { return Math.random().toString(36).slice(2, 10); }
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
@@ -777,11 +856,12 @@
 
   function readDoc(data) {
     if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) return null;
-    const nodes = data.nodes.filter(n => n && n.id != null).map(n => ({
+    const nodes = data.nodes.filter(n => n && n.id != null && String(n.text == null ? "" : n.text).trim()).map(n => ({
       id: String(n.id),
       text: String(n.text == null ? "" : n.text),
       x: Number.isFinite(+n.x) ? +n.x : 0,
       y: Number.isFinite(+n.y) ? +n.y : 0,
+      src: n.src && Number.isFinite(+n.src.s) && typeof n.src.q === "string" && n.src.q ? { s: +n.src.s, q: n.src.q } : undefined,
     }));
     const edges = data.edges.filter(ed => ed && ed.target != null).map(ed => ({
       id: String(ed.id == null ? uid() : ed.id),
@@ -789,7 +869,29 @@
       target: String(ed.target),
       kind: ed.kind,
     }));
-    return cleanDoc({ nodes, edges });
+    const out = cleanDoc({ nodes, edges });
+    out.passage = typeof data.passage === "string" ? data.passage : "";
+    return out;
+  }
+
+  /* The passage a map is drawn from travels with the map. A claim made from the passage remembers
+     where it came from (src: where the words start, and the words). The tie only counts while
+     the passage still has those words in that place. */
+  function srcRange(n, passage) {
+    if (!n.src || !passage || passage.substr(n.src.s, n.src.q.length) !== n.src.q) return null;
+    return { s: n.src.s, e: n.src.s + n.src.q.length, id: n.id };
+  }
+  function trimRange(text, s, e) {
+    while (s < e && /\s/.test(text[s])) s++;
+    while (e > s && /\s/.test(text[e - 1])) e--;
+    return { s, e };
+  }
+  function splitSentences(text) {
+    const out = [];
+    const re = /[^.!?\n]*(?:[.!?]+["'”’)\]]*|\n+|$)\s*/g;
+    let m;
+    while ((m = re.exec(text)) && m[0].length) out.push({ s: m.index, e: m.index + m[0].length });
+    return out;
   }
 
   /* Reads the map as an argument. Only support arrows build the argument: every supported claim
@@ -950,6 +1052,19 @@
       ? [[g.x, g.y + arm], [g.x, g.y], [g.x + g.w, g.y], [g.x + g.w, g.y + arm]]
       : [[g.x, g.y + g.h - arm], [g.x, g.y + g.h], [g.x + g.w, g.y + g.h], [g.x + g.w, g.y + g.h - arm]];
   }
+  /* Where an arrow leaves one box and meets another. A reason that sits above (or below) its
+     claim sends its arrow straight out of its bottom (or top) edge to the near part of the
+     claim's facing edge; boxes side by side join at their sides. Anything else goes center to center. */
+  function anchorPair(sb, tb) {
+    const sc = centerOf(sb), tc = centerOf(tb), G = 16;
+    const alongX = (b, x) => clamp(x, b.x + Math.min(34, b.w / 2), b.x + b.w - Math.min(34, b.w / 2));
+    const alongY = (b, y) => clamp(y, b.y + Math.min(18, b.h / 2), b.y + b.h - Math.min(18, b.h / 2));
+    if (sb.y + sb.h + G <= tb.y) return { start: { x: sc.x, y: sb.y + sb.h + 2 }, end: { x: alongX(tb, sc.x), y: tb.y - 4 } };
+    if (tb.y + tb.h + G <= sb.y) return { start: { x: sc.x, y: sb.y - 2 }, end: { x: alongX(tb, sc.x), y: tb.y + tb.h + 4 } };
+    if (sb.x + sb.w + G <= tb.x) return { start: { x: sb.x + sb.w + 2, y: sc.y }, end: { x: tb.x - 4, y: alongY(tb, sc.y) } };
+    if (tb.x + tb.w + G <= sb.x) return { start: { x: sb.x - 2, y: sc.y }, end: { x: tb.x + tb.w + 4, y: alongY(tb, sc.y) } };
+    return { start: edgePoint(sb, tc.x, tc.y, 2), end: edgePoint(tb, sc.x, sc.y, 4) };
+  }
   function edgeGeom(ed, byId, getH) {
     const tgt = byId[ed.target];
     const srcs = ed.sources.filter(s => byId[s]);
@@ -957,14 +1072,16 @@
     const tb = boxOf(tgt, getH(tgt.id)), tc = centerOf(tb);
     let start, end, bracket = null;
     if (srcs.length === 1) {
-      const sb = boxOf(byId[srcs[0]], getH(srcs[0])), sc = centerOf(sb);
-      start = edgePoint(sb, tc.x, tc.y, 2);
-      end = edgePoint(tb, sc.x, sc.y, 4);
+      const a = anchorPair(boxOf(byId[srcs[0]], getH(srcs[0])), tb);
+      start = a.start;
+      end = a.end;
     } else {
       const g = groupBox(srcs, byId, getH);
       const fromTop = tc.y <= g.y + g.h / 2;
       start = { x: g.x + g.w / 2, y: fromTop ? g.y : g.y + g.h };
       end = edgePoint(tb, start.x, start.y, 4);
+      const clear = fromTop ? tb.y + tb.h + 12 <= g.y : g.y + g.h + 12 <= tb.y;
+      if (clear) end = { x: clamp(start.x, tb.x + Math.min(34, tb.w / 2), tb.x + tb.w - Math.min(34, tb.w / 2)), y: fromTop ? tb.y + tb.h + 4 : tb.y - 4 };
       bracket = bracketPts(g, fromTop);
     }
     const hd = arrowHead(start, end);
@@ -974,9 +1091,15 @@
 
   /* A free spot for a new claim: near the middle of the view, inside it if there is room, below or
      beside the others rather than on top of them. */
-  function findSpot(nodes, cx, cy, getH, view) {
-    const free = (x, y) => nodes.every(n => x + NODE_W + 16 < n.x || n.x + NODE_W + 16 < x || y + NODE_MIN_H + 16 < n.y || n.y + getH(n.id) + 16 < y);
-    const inView = (x, y) => !view || (x >= view.x0 && y >= view.y0 && x + NODE_W <= view.x1 && y + NODE_MIN_H <= view.y1);
+  function estH(text) {
+    const lines = String(text).split("\n").reduce((a, par) => a + Math.max(1, Math.ceil(par.length / 22)), 0);
+    return Math.max(NODE_MIN_H, 24 + lines * 23.2);
+  }
+  function findSpot(nodes, cx, cy, getH, view, h) {
+    h = h || NODE_MIN_H;
+    const GX = 28, GY = 44; // room enough between claims for an arrow to show
+    const free = (x, y) => nodes.every(n => x + NODE_W + GX < n.x || n.x + NODE_W + GX < x || y + h + GY < n.y || n.y + getH(n.id) + GY < y);
+    const inView = (x, y) => !view || (x >= view.x0 && y >= view.y0 && x + NODE_W <= view.x1 && y + h <= view.y1);
     const spots = [];
     for (let i = -10; i <= 10; i++) for (let j = -12; j <= 12; j++) {
       spots.push({ x: cx + i * 128, y: cy + j * 50, cost: Math.abs(i) * 0.5 + Math.abs(j) * 0.4 + (j < 0 ? 0.3 : 0) + (i < 0 ? 0.1 : 0) });
@@ -984,6 +1107,189 @@
     spots.sort((a, b) => a.cost - b.cost);
     const hit = spots.find(p => inView(p.x, p.y) && free(p.x, p.y)) || spots.find(p => free(p.x, p.y));
     return hit || { x: cx + (Math.random() - 0.5) * 120, y: cy + (Math.random() - 0.5) * 80 };
+  }
+
+  /* Tidy: arranges the map as a tree. By default the conclusion is on top (the tree is built
+     conclusion-down and then turned over); with "Conclusion on top" off it stays conclusion-down.
+     Supports sit in a row next to the claim they support, in the
+     left-to-right order they already have, so the S numbers stay put. Joined supports stay side by
+     side. Objections sit to the right of the claim they object to. Claims with no arrows go in a
+     row underneath. The map keeps its top-left corner. */
+  function tidyLayout(doc, getH, top) {
+    const HG = 44, VG = 76, OG = 148, OVG = 32, ROOT_G = 92;
+    const byId = {};
+    doc.nodes.forEach(n => { byId[n.id] = n; });
+    const sup = {}, obj = {}, hasOut = new Set(), touched = new Set();
+    doc.edges.forEach(ed => {
+      if (!byId[ed.target]) return;
+      touched.add(ed.target);
+      const m = ed.kind === "supports" ? sup : obj;
+      ed.sources.forEach(s => {
+        if (!byId[s]) return;
+        touched.add(s);
+        hasOut.add(s);
+        (m[ed.target] || (m[ed.target] = [])).push({ id: s, grp: ed.sources.length > 1 ? ed.id : s });
+      });
+    });
+    const placed = new Set();
+    const claim = list => (list || []).filter(c => { if (placed.has(c.id)) return false; placed.add(c.id); return true; });
+    const build = id => {
+      placed.add(id);
+      const sups = claim(sup[id]), objs = claim(obj[id]);
+      const gx = {};
+      sups.forEach(c => { gx[c.grp] = Math.min(gx[c.grp] == null ? Infinity : gx[c.grp], byId[c.id].x); });
+      sups.sort((a, b) => gx[a.grp] - gx[b.grp] || (a.grp < b.grp ? -1 : a.grp > b.grp ? 1 : 0) || byId[a.id].x - byId[b.id].x || byId[a.id].y - byId[b.id].y);
+      objs.sort((a, b) => byId[a.id].y - byId[b.id].y || byId[a.id].x - byId[b.id].x);
+      const sB = sups.map(c => build(c.id)), oB = objs.map(c => build(c.id));
+      const h = getH(id);
+      let coreW = NODE_W, nodeOff = 0, rowH = 0;
+      if (sB.length) {
+        let x = 0;
+        sB.forEach(b => { b.rx = x; x += b.w + HG; });
+        coreW = x - HG;
+        const first = sB[0], last = sB[sB.length - 1];
+        nodeOff = (first.rx + first.nodeOff + last.rx + last.nodeOff + NODE_W) / 2 - NODE_W / 2;
+        rowH = Math.max(...sB.map(b => b.H));
+      }
+      const coreH = h + (sB.length ? rowH + VG : 0);
+      let w = coreW, H = coreH, objX = 0;
+      if (oB.length) {
+        const colW = Math.max(...oB.map(b => b.w));
+        const colH = oB.reduce((a, b) => a + b.H, 0) + OVG * (oB.length - 1);
+        objX = nodeOff + NODE_W + OG;
+        if (sB.length && colH > h + VG - 24) objX = Math.max(objX, coreW + OG - 60);
+        w = Math.max(coreW, objX + colW);
+        H = Math.max(coreH, colH);
+      }
+      return { id, h, sB, oB, nodeOff, objX, w, H };
+    };
+    const pos = {};
+    const place = (b, x, bottom) => {
+      pos[b.id] = { x: x + b.nodeOff, y: bottom - b.h };
+      b.sB.forEach(c => place(c, x + c.rx, bottom - b.h - VG));
+      let y = bottom;
+      b.oB.slice().reverse().forEach(c => { place(c, x + b.objX, y); y -= c.H + OVG; });
+    };
+    const order = doc.nodes.filter(n => touched.has(n.id)).sort((a, b) => a.x - b.x || a.y - b.y);
+    const roots = [];
+    order.forEach(n => { if (!hasOut.has(n.id) && !placed.has(n.id)) roots.push(build(n.id)); });
+    order.forEach(n => { if (!placed.has(n.id)) roots.push(build(n.id)); }); // arrows that run in a circle
+    const base = roots.length ? Math.max(...roots.map(b => b.H)) : 0;
+    let x = 0;
+    roots.forEach(b => { place(b, x, base); x += b.w + ROOT_G; });
+    // Conclusions on top: the same tree, turned upside down.
+    if (top) Object.keys(pos).forEach(id => { pos[id] = { x: pos[id].x, y: base - pos[id].y - getH(id) }; });
+    const totalW = Math.max(x - ROOT_G, NODE_W * 3 + HG * 2);
+    const loose = doc.nodes.filter(n => !touched.has(n.id)).sort((a, b) => a.y - b.y || a.x - b.x);
+    let lx = 0, ly = base + (roots.length ? ROOT_G : 0), rowMax = 0;
+    loose.forEach(n => {
+      if (lx > 0 && lx + NODE_W > totalW) { lx = 0; ly += rowMax + 44; rowMax = 0; }
+      pos[n.id] = { x: lx, y: ly };
+      lx += NODE_W + HG;
+      rowMax = Math.max(rowMax, getH(n.id));
+    });
+    const ids = Object.keys(pos);
+    if (!ids.length) return pos;
+    const dx = Math.min(...doc.nodes.map(n => n.x)) - Math.min(...ids.map(id => pos[id].x));
+    const dy = Math.min(...doc.nodes.map(n => n.y)) - Math.min(...ids.map(id => pos[id].y));
+    ids.forEach(id => { pos[id] = { x: Math.round(pos[id].x + dx), y: Math.round(pos[id].y + dy) }; });
+    return pos;
+  }
+
+  /* ── A map packed into a link. The map rides in the part of the address after the #, which the
+     browser never sends to a server. "z" links are compressed, "j" links are plain. ── */
+  function packDoc(doc) {
+    const idx = {};
+    doc.nodes.forEach((n, i) => { idx[n.id] = i; });
+    return JSON.stringify({
+      v: 1,
+      p: doc.passage || undefined,
+      n: doc.nodes.map(n => (srcRange(n, doc.passage) ? [n.text, Math.round(n.x), Math.round(n.y), n.src.s, n.src.q.length] : [n.text, Math.round(n.x), Math.round(n.y)])),
+      e: doc.edges.map(ed => [ed.kind === "objects" ? 1 : 0, idx[ed.target], ed.sources.map(x => idx[x])]),
+    });
+  }
+  function unpackDoc(str) {
+    const d = JSON.parse(str);
+    if (!d || !Array.isArray(d.n) || !Array.isArray(d.e)) return null;
+    const passage = typeof d.p === "string" ? d.p : "";
+    const nodes = d.n.map((a, i) => ({ id: "n" + i + "-" + uid(), text: a[0], x: a[1], y: a[2],
+      src: passage && a.length >= 5 ? { s: a[3], q: passage.substr(a[3], a[4]) } : undefined }));
+    const edges = d.e.filter(a => Array.isArray(a) && nodes[a[1]] && Array.isArray(a[2])).map(a => ({
+      id: uid(), kind: a[0] ? "objects" : "supports", target: nodes[a[1]].id,
+      sources: a[2].filter(i => nodes[i]).map(i => nodes[i].id),
+    }));
+    return readDoc({ nodes, edges, passage });
+  }
+  function b64u(bytes) {
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function unb64u(str) {
+    const bin = atob(str.replace(/-/g, "+").replace(/_/g, "/"));
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  async function throughStream(bytes, stream) {
+    return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+  }
+  async function encodeMap(doc) {
+    const raw = new TextEncoder().encode(packDoc(doc));
+    if (typeof CompressionStream !== "undefined") {
+      try { return "z" + b64u(await throughStream(raw, new CompressionStream("deflate-raw"))); } catch (err) { /* plain instead */ }
+    }
+    return "j" + b64u(raw);
+  }
+  async function decodeMap(code) {
+    try {
+      let bytes = unb64u(code.slice(1));
+      if (code[0] === "z") {
+        if (typeof DecompressionStream === "undefined") return null;
+        bytes = await throughStream(bytes, new DecompressionStream("deflate-raw"));
+      } else if (code[0] !== "j") return null;
+      return unpackDoc(new TextDecoder().decode(bytes));
+    } catch (err) { return null; }
+  }
+
+  /* ── Example maps. Our own passages. Claims are listed left to right as they should sit; each
+     arrow is [kind, target, sources]. Tidy lays them out. ── */
+  var EXAMPLES = [
+    { name: "Two separate reasons",
+      passage: "The library should stay open until midnight during finals week. Last year every study room was booked solid that week, and students were turned away at the door. The only other late study spot on campus, the coffee shop, closes at nine.",
+      claims: [
+        ["The library should stay open until midnight during finals week.", "The library should stay open until midnight during finals week."],
+        ["Every study room was booked solid during last year's finals week.", "Last year every study room was booked solid that week"],
+        ["The campus coffee shop, the only other late study spot, closes at nine.", "The only other late study spot on campus, the coffee shop, closes at nine."],
+      ], arrows: [["supports", 0, [1]], ["supports", 0, [2]]] },
+    { name: "Joined supports and a tributary",
+      passage: "Something tipped over the Hendersons' trash cans again on Tuesday night, and Dolores Henderson blames the wind. Her neighbor is not convinced. The latches on the lids were undone, and wind cannot undo a latch, so something with nimble paws or hands opened the cans. Muddy paw prints lead from the cans to the storm drain, and raccoons nest in the storm drains on this street. A raccoon did it.",
+      claims: [
+        ["A raccoon tipped over the Hendersons' trash cans.", "A raccoon did it."],
+        ["The latches on the lids were undone.", "The latches on the lids were undone"],
+        ["Wind cannot undo a latch.", "wind cannot undo a latch"],
+        ["Something with nimble paws or hands opened the cans.", "something with nimble paws or hands opened the cans"],
+        ["Muddy paw prints lead from the cans to the storm drain.", "Muddy paw prints lead from the cans to the storm drain"],
+        ["Raccoons nest in the storm drains on this street.", "raccoons nest in the storm drains on this street"],
+      ], arrows: [["supports", 3, [1, 2]], ["supports", 0, [3]], ["supports", 0, [4, 5]]] },
+    { name: "An objection and a reply",
+      passage: "The town should replace the Main Street stoplight with a roundabout. Cars move slowly through a roundabout and cannot collide head-on. The stoplight, meanwhile, backs traffic up past the fire station every afternoon. Some residents object that fire trucks would lose time circling a roundabout. But the backed-up traffic at the light already blocks the fire station's driveway.",
+      claims: [
+        ["The town should replace the Main Street stoplight with a roundabout.", "The town should replace the Main Street stoplight with a roundabout."],
+        ["Cars move slowly through a roundabout and cannot collide head-on.", "Cars move slowly through a roundabout and cannot collide head-on."],
+        ["The stoplight backs traffic up past the fire station every afternoon.", "The stoplight, meanwhile, backs traffic up past the fire station every afternoon."],
+        ["Fire trucks would lose time circling a roundabout.", "fire trucks would lose time circling a roundabout"],
+        ["The backed-up traffic at the light already blocks the fire station's driveway.", "the backed-up traffic at the light already blocks the fire station's driveway"],
+      ], arrows: [["supports", 0, [1]], ["supports", 0, [2]], ["objects", 0, [3]], ["objects", 3, [4]]] },
+  ];
+  function exampleDoc(ex, top) {
+    const nodes = ex.claims.map((c, i) => {
+      const at = ex.passage.indexOf(c[1]);
+      return { id: "x" + i + "-" + uid(), text: c[0], x: i, y: 0, src: at >= 0 ? { s: at, q: c[1] } : undefined };
+    });
+    const edges = ex.arrows.map(a => ({ id: uid(), kind: a[0], target: nodes[a[1]].id, sources: a[2].map(i => nodes[i].id) }));
+    const pos = tidyLayout({ nodes, edges }, id => estH(nodes.find(n => n.id === id).text) + 17, top);
+    return { nodes: nodes.map(n => Object.assign({}, n, { x: pos[n.id].x + 40, y: pos[n.id].y + 40 })), edges, passage: ex.passage };
   }
 
   function downloadBlob(name, blob) {
@@ -1003,7 +1309,7 @@
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const TEXT = '16px "Source Serif 4", Georgia, serif', LABEL = '500 11px "Overpass Mono", monospace';
-    const LH = 22.4, PADX = 12, PADY = 9, LABEL_H = 17, INNER = NODE_W - PADX * 2 - 2;
+    const LH = 23.2, PADX = 13, PADY = 10, LABEL_H = 21, INNER = NODE_W - PADX * 2 - 4;
     ctx.font = TEXT;
     const wrap = text => {
       const out = [];
@@ -1029,7 +1335,7 @@
     doc.nodes.forEach(n => {
       const lines = wrap(n.text);
       const lab = an.display[n.id];
-      const border = an.role[n.id] === "main" ? 2 : 1;
+      const border = 2;
       lay[n.id] = { lines, lab, h: Math.max(NODE_MIN_H, PADY * 2 + border * 2 + (lab ? LABEL_H : 0) + lines.length * LH) };
     });
     const getH = id => (lay[id] ? lay[id].h : NODE_MIN_H);
@@ -1052,7 +1358,7 @@
       const color = ed.kind === "objects" ? BRICK : INK;
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 2;
       ctx.setLineDash(ed.kind === "objects" ? [7, 5] : []);
       if (g.bracket) {
         ctx.beginPath();
@@ -1080,23 +1386,32 @@
     });
     doc.nodes.forEach(n => {
       const L = lay[n.id], r = an.role[n.id], obj = an.isObj[n.id];
-      const bw = r === "main" ? 2 : 1;
-      ctx.fillStyle = CARD;
+      const bw = 2, GOLD = "#eeb211";
+      ctx.fillStyle = r === "main" ? NAVY : CARD;
       ctx.fillRect(n.x, n.y, NODE_W, L.h);
       ctx.lineWidth = bw;
-      ctx.strokeStyle = obj ? BRICK : (r === "main" || r === "trib" ? INK : EDGE);
+      ctx.strokeStyle = obj ? BRICK : (r === "main" || r === "trib" ? NAVY : INK);
       ctx.setLineDash(obj ? [5, 3] : []);
       ctx.strokeRect(n.x + bw / 2, n.y + bw / 2, NODE_W - bw, L.h - bw);
       ctx.setLineDash([]);
       let y = n.y + bw + PADY;
       if (L.lab) {
         ctx.font = LABEL;
-        ctx.fillStyle = obj || r === "objection" || r === "reply" ? BRICK : (r === "objsupport" ? GRAPHITE : NAVY);
-        ctx.fillText(L.lab, n.x + bw + PADX, y + 11);
+        const objish = obj || r === "objection" || r === "reply";
+        // [fill, text, outline]: solid tabs for the conclusion, tributaries and objections; outlined for the rest.
+        const tab = objish ? [BRICK, CARD, BRICK] : r === "objsupport" ? [null, GRAPHITE, GRAPHITE] : r === "main" ? [GOLD, INK, GOLD] : r === "trib" ? [NAVY, CARD, NAVY] : [null, INK, INK];
+        const spaced = L.lab.split("").join("\u200a");
+        const tw = ctx.measureText(spaced).width + 12;
+        if (tab[0]) { ctx.fillStyle = tab[0]; ctx.fillRect(n.x + bw + PADX, y, tw, 16); }
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = tab[2];
+        ctx.strokeRect(n.x + bw + PADX + 0.5, y + 0.5, tw - 1, 15);
+        ctx.fillStyle = tab[1];
+        ctx.fillText(spaced, n.x + bw + PADX + 6, y + 12);
         y += LABEL_H;
       }
       ctx.font = TEXT;
-      ctx.fillStyle = INK;
+      ctx.fillStyle = r === "main" ? CARD : INK;
       L.lines.forEach((line, i) => ctx.fillText(line, n.x + bw + PADX, y + 16 + i * LH));
     });
     await new Promise(resolve => canvas.toBlob(blob => { if (blob) downloadBlob("argument-map.png", blob); resolve(); }, "image/png"));
@@ -1110,7 +1425,7 @@
       const doc = readDoc(data);
       if (!doc) return null;
       const vp = data.vp && [data.vp.x, data.vp.y, data.vp.scale].every(Number.isFinite) ? data.vp : null;
-      return { doc, vp, snap: !!data.snap };
+      return { doc, vp, snap: !!data.snap, top: data.top !== false };
     } catch (err) { return null; }
   }
   var SAVED = loadSaved();
@@ -1121,9 +1436,14 @@
     <polygon points="13,1.5 20,5 13,8.5" fill="currentColor" /></svg>`;
 
   function App() {
-    const [doc, setDocState] = useState(() => (SAVED ? SAVED.doc : { nodes: [], edges: [] }));
+    const [doc, setDocState] = useState(() => (SAVED ? SAVED.doc : { nodes: [], edges: [], passage: "" }));
     const docRef = useRef(doc);
-    const setDoc = next => { docRef.current = next; setDocState(next); };
+    // The passage rides along with the map: an update that doesn't mention it keeps the one in place.
+    const setDoc = next => {
+      if (next.passage === undefined) next = Object.assign({}, next, { passage: docRef.current.passage || "" });
+      docRef.current = next;
+      setDocState(next);
+    };
     const past = useRef([]), future = useRef([]);
     const [, setTick] = useState(0);
     const bump = () => setTick(t => t + 1);
@@ -1144,6 +1464,7 @@
     const heightsRef = useRef(heights);
     heightsRef.current = heights;
     const [snap, setSnap] = useState(SAVED ? SAVED.snap : false);
+    const [concTop, setConcTop] = useState(SAVED ? SAVED.top : true);
     const [draft, setDraft] = useState("");
     const [live, setLive] = useState("");
     const [box, setBox] = useState(null);
@@ -1155,13 +1476,24 @@
     const [storageOk, setStorageOk] = useState(true);
     const [panning, setPanning] = useState(false);
     const [link, setLink] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const [linkCopied, setLinkCopied] = useState(false);
+    const [showPassage, setShowPassage] = useState(() => !!(SAVED && SAVED.doc.passage));
+    const [passEdit, setPassEdit] = useState(null);
+    const [selRange, setSelRange] = useState(null);
+    const passRef = useRef(null);
 
     const boardRef = useRef(null), fileRef = useRef(null), dialogRef = useRef(null), addRef = useRef(null);
     const gesture = useRef(null), pointers = useRef(new Map()), suppressClick = useRef(false);
     const moveStamp = useRef(0), sideEditStart = useRef(null), editClosed = useRef(false);
 
     const an = useMemo(() => analyze(doc), [doc]);
-    const getH = id => heightsRef.current[id] || NODE_MIN_H;
+    const getH = id => {
+      if (heightsRef.current[id]) return heightsRef.current[id];
+      const n = docRef.current.nodes.find(x => x.id === id);
+      return n ? estH(n.text) : NODE_MIN_H;
+    };
+    const pendingNew = useRef(null);
     const announce = msg => setLive(m => (m === msg ? msg + " " : msg));
     const snapV = v => (snap ? Math.round(v / GRID) * GRID : Math.round(v));
 
@@ -1171,12 +1503,12 @@
     useEffect(() => {
       const t = setTimeout(() => {
         try {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, nodes: doc.nodes, edges: doc.edges, vp, snap }));
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, nodes: doc.nodes, edges: doc.edges, passage: doc.passage || "", vp, snap, top: concTop }));
           if (!storageOk) setStorageOk(true);
         } catch (err) { setStorageOk(false); }
       }, 250);
       return () => clearTimeout(t);
-    }, [doc, vp, snap]);
+    }, [doc, vp, snap, concTop]);
 
     /* ── history ── */
     const commit = (next, msg) => {
@@ -1222,15 +1554,16 @@
     });
     const zoomBy = f => { const r = boardRef.current.getBoundingClientRect(); zoomAt(f, r.width / 2, r.height / 2); };
     const resetZoom = () => { const r = boardRef.current.getBoundingClientRect(); zoomAt(1 / vpRef.current.scale, r.width / 2, r.height / 2); };
-    const fit = () => {
+    const fitTo = cap => {
       const ns = docRef.current.nodes;
       if (!ns.length || !boardRef.current) return;
       const r = boardRef.current.getBoundingClientRect();
       const minX = Math.min(...ns.map(n => n.x)) - 40, minY = Math.min(...ns.map(n => n.y)) - 40;
       const maxX = Math.max(...ns.map(n => n.x + NODE_W)) + 40, maxY = Math.max(...ns.map(n => n.y + getH(n.id))) + 40;
-      const s = clamp(Math.min(r.width / (maxX - minX), r.height / (maxY - minY)), ZOOM_MIN, 1.5);
+      const s = clamp(Math.min(r.width / (maxX - minX), r.height / (maxY - minY)), ZOOM_MIN, cap);
       setVp({ scale: s, x: (r.width - (maxX - minX) * s) / 2 - minX * s, y: (r.height - (maxY - minY) * s) / 2 - minY * s });
     };
+    const fit = () => fitTo(1.5);
     const ensureVisible = id => {
       const n = docRef.current.nodes.find(x => x.id === id), el = boardRef.current;
       if (!n || !el) return;
@@ -1302,9 +1635,9 @@
       if (mode === "delete") return "Choose a claim or an arrow to delete.";
       if (multi.length > 1) return multi.length + " claims selected. Drag one to move them all.";
       if (link) return link.over ? "Let go to draw the arrow." + (COARSE ? "" : " Alt (Option on a Mac) switches between support and objection.")
-        : "Drag onto the claim it " + (link.kind === "supports" ? "supports." : "objects to.");
+        : "Drag onto the claim it " + (link.kind === "supports" ? "supports" : "objects to") + ", or let go on empty board to add a new claim there.";
       return COARSE ? "Drag the dot on a claim to another claim to draw an arrow. Drag a claim to move it. Pinch to zoom."
-        : "Drag the dot on a claim's top edge to another claim to draw an arrow. Drag a claim to move it. Shift + drag selects several. Ctrl + scroll zooms.";
+        : "Double-click the board to add a claim. Drag the dot on a claim's top edge to another claim to draw an arrow. Shift + drag selects several. Ctrl + scroll zooms.";
     };
     const switchMode = (m, kind) => {
       setMode(m);
@@ -1319,21 +1652,121 @@
     const cancelModes = () => { setMode("select"); setSource(null); setChosen([]); setBox(null); };
 
     /* ── editing the map ── */
-    const addClaim = () => {
-      const text = draft.trim();
-      if (!text) return;
+    const placeClaim = (text, src, msg) => {
       const r = boardRef.current.getBoundingClientRect(), v = vpRef.current;
       const view = { x0: (12 - v.x) / v.scale, y0: (12 - v.y) / v.scale, x1: (r.width - 12 - v.x) / v.scale, y1: (r.height - 12 - v.y) / v.scale };
       const cx = Math.max(view.x0, (r.width / 2 - v.x) / v.scale - NODE_W / 2), cy = (r.height / 3 - v.y) / v.scale - NODE_MIN_H / 2;
-      const spot = findSpot(docRef.current.nodes, cx, cy, getH, view);
+      const spot = findSpot(docRef.current.nodes, cx, cy, getH, view, estH(text) + 17);
       const node = { id: uid(), text, x: snapV(spot.x), y: snapV(spot.y) };
-      commit({ nodes: docRef.current.nodes.concat([node]), edges: docRef.current.edges }, "Claim added to the board.");
-      setDraft("");
+      if (src) node.src = src;
+      commit({ nodes: docRef.current.nodes.concat([node]), edges: docRef.current.edges }, msg);
       cancelModes();
       setMulti([]);
       setSel({ type: "node", id: node.id });
       setNewTarget("");
       requestAnimationFrame(() => ensureVisible(node.id));
+    };
+    const addClaim = () => {
+      const text = draft.trim();
+      if (!text) return;
+      placeClaim(text, null, "Claim added to the board.");
+      setDraft("");
+    };
+
+    /* ── the passage ── */
+    const applyPassage = raw => {
+      const prev = docRef.current, old = prev.passage || "";
+      const t = String(raw).replace(/\r\n?/g, "\n").trim();
+      setPassEdit(null);
+      if (t === old) return;
+      // Claims keep their tie to the passage where their words are still in it.
+      const nodes = prev.nodes.map(n => {
+        if (!n.src) return n;
+        const live = srcRange(n, old), at = live && t ? t.indexOf(n.src.q) : -1;
+        const m = Object.assign({}, n);
+        if (at >= 0) m.src = { s: at, q: n.src.q }; else delete m.src;
+        return m;
+      });
+      commit({ nodes, edges: prev.edges, passage: t }, t ? (old ? "Passage changed." : "Passage added. Highlight part of it to make a claim.") : "Passage removed.");
+      setSelRange(null);
+    };
+    const claimFromRange = (s0, e0) => {
+      const passage = docRef.current.passage || "";
+      const { s, e } = trimRange(passage, s0, e0);
+      if (e <= s) return;
+      const q = passage.slice(s, e);
+      const dup = docRef.current.nodes.find(n => n.src && n.src.s === s && n.src.q === q);
+      if (dup) { setMulti([]); setSel({ type: "node", id: dup.id }); ensureVisible(dup.id); announce("That part of the passage is already a claim."); return; }
+      placeClaim(q.replace(/\s+/g, " "), { s, q }, "Claim added from the passage. Reword it so it stands alone.");
+      try { window.getSelection().removeAllRanges(); } catch (err) { /* nothing selected */ }
+      setSelRange(null);
+    };
+    useEffect(() => {
+      const onSel = () => {
+        const box = passRef.current, sel = window.getSelection ? window.getSelection() : null;
+        if (!box || !sel || !sel.rangeCount || sel.isCollapsed || !box.contains(sel.anchorNode) || !box.contains(sel.focusNode)) { setSelRange(r => (r ? null : r)); return; }
+        const rg = sel.getRangeAt(0), pre = document.createRange();
+        pre.selectNodeContents(box);
+        pre.setEnd(rg.startContainer, rg.startOffset);
+        const s0 = pre.toString().length;
+        const t = trimRange(docRef.current.passage || "", s0, s0 + rg.toString().length);
+        setSelRange(r => (t.e > t.s ? (r && r.s === t.s && r.e === t.e ? r : t) : null));
+      };
+      // Some browsers are slow or silent with selectionchange, so check again when a drag or a key ends.
+      const later = () => setTimeout(onSel, 0);
+      document.addEventListener("selectionchange", onSel);
+      document.addEventListener("pointerup", later);
+      document.addEventListener("keyup", later);
+      return () => {
+        document.removeEventListener("selectionchange", onSel);
+        document.removeEventListener("pointerup", later);
+        document.removeEventListener("keyup", later);
+      };
+    }, []);
+
+    /* A blank claim put straight on the board, open for typing. It only becomes part of the map
+       (and of the undo history) once it has words; left blank, it goes away again. */
+    const newClaimAt = (x, y, edge) => {
+      if (editing) return;
+      const prev = docRef.current;
+      const node = { id: uid(), text: "", x: snapV(x), y: snapV(y) };
+      const edges = edge ? prev.edges.concat([{ id: uid(), sources: [edge.from || node.id], target: edge.to || node.id, kind: edge.kind }]) : prev.edges;
+      pendingNew.current = { id: node.id, prev, edge: edge || null };
+      setDoc({ nodes: prev.nodes.concat([node]), edges });
+      cancelModes();
+      setMulti([]);
+      setSel(null);
+      editClosed.current = false;
+      setEditing(node.id);
+      setEditText("");
+      announce("New claim. Type its words, then press Enter.");
+      requestAnimationFrame(() => ensureVisible(node.id));
+    };
+    const NEW_H = 90;
+    const addLinked = (id, kind) => {
+      const n = docRef.current.nodes.find(x => x.id === id);
+      if (!n) return;
+      const spot = kind === "supports"
+        ? findSpot(docRef.current.nodes, n.x, concTop ? n.y + getH(id) + 76 : n.y - 76 - NEW_H, getH, null, NEW_H)
+        : findSpot(docRef.current.nodes, n.x + NODE_W + 148, n.y, getH, null, NEW_H);
+      newClaimAt(spot.x, spot.y, { kind, to: id });
+    };
+
+    const tidy = top => {
+      if (typeof top !== "boolean") top = concTop;
+      const prev = docRef.current;
+      if (!prev.nodes.length) return;
+      const pos = tidyLayout(prev, getH, top);
+      const nodes = prev.nodes.map(n => (pos[n.id] ? Object.assign({}, n, { x: snapV(pos[n.id].x), y: snapV(pos[n.id].y) }) : n));
+      if (nodes.every((n, i) => n.x === prev.nodes[i].x && n.y === prev.nodes[i].y)) { announce("The map is already tidy."); fitTo(1); return; }
+      commit({ nodes, edges: prev.edges }, "Map tidied, " + (top ? "conclusion on top" : "conclusion at the bottom") + ". Undo puts the claims back where they were.");
+      setTimeout(() => fitTo(1), 60);
+    };
+    const flipConclusion = () => {
+      const next = !concTop;
+      setConcTop(next);
+      if (docRef.current.nodes.length) tidy(next);
+      else announce(next ? "Tidy will put the conclusion on top." : "Tidy will put the conclusion at the bottom.");
     };
 
     const addArrow = (kind, src, tgt) => {
@@ -1428,6 +1861,26 @@
       editClosed.current = true;
       setEditing(null);
       const t = editText.trim();
+      const pend = pendingNew.current && pendingNew.current.id === id ? pendingNew.current : null;
+      if (pend) {
+        pendingNew.current = null;
+        if (save && t) {
+          const cur = docRef.current;
+          const next = { nodes: cur.nodes.map(x => (x.id === id ? Object.assign({}, x, { text: t }) : x)), edges: cur.edges };
+          pushPast(pend.prev);
+          setDoc(next);
+          setSel({ type: "node", id });
+          const a = analyze(next), ed = pend.edge;
+          announce(ed ? "Claim added: " + a.ref(ed.from || id) + (ed.kind === "supports" ? " supports " : " objects to ") + a.ref(ed.to || id) + "." : "Claim added to the board.");
+          focusCard(id);
+        } else {
+          setDoc(pend.prev);
+          dropStale(pend.prev);
+          announce("No claim added.");
+          if (boardRef.current) boardRef.current.focus({ preventScroll: true });
+        }
+        return;
+      }
       const prev = docRef.current, n = prev.nodes.find(x => x.id === id);
       if (save && t && n && n.text !== t) commit({ nodes: prev.nodes.map(x => (x.id === id ? Object.assign({}, x, { text: t }) : x)), edges: prev.edges }, "Claim text saved.");
       else if (!save) announce("Edit cancelled.");
@@ -1594,8 +2047,13 @@
           return;
         }
         const tgt = claimAt(ev.clientX, ev.clientY);
-        if (tgt && tgt !== g.src) addArrow(linkKind(ev.altKey), g.src, tgt);
-        else announce("No arrow drawn. Let go over another claim to draw one.");
+        if (tgt && tgt !== g.src) { addArrow(linkKind(ev.altKey), g.src, tgt); return; }
+        const br = boardRef.current ? boardRef.current.getBoundingClientRect() : null;
+        if (!tgt && br && ev.clientX > br.left && ev.clientX < br.right && ev.clientY > br.top && ev.clientY < br.bottom) {
+          const c = toCanvas(ev.clientX, ev.clientY);
+          const spot = findSpot(docRef.current.nodes, c.x - NODE_W / 2, c.y - 30, getH, null, NEW_H);
+          newClaimAt(spot.x, spot.y, { kind: linkKind(ev.altKey), from: g.src });
+        } else announce("No arrow drawn. Let go over another claim, or over empty board to add a new one.");
         return;
       }
       if (g.type === "drag" && g.moved) pushPast(g.start);
@@ -1728,7 +2186,7 @@
 
     /* ── files and output ── */
     const saveFile = () => {
-      const data = JSON.stringify({ format: "argument-map", version: 1, nodes: docRef.current.nodes, edges: docRef.current.edges }, null, 2);
+      const data = JSON.stringify({ format: "argument-map", version: 1, passage: docRef.current.passage || undefined, nodes: docRef.current.nodes, edges: docRef.current.edges }, null, 2);
       downloadBlob("argument-map.json", new Blob([data], { type: "application/json" }));
       announce("Saved argument-map.json to your downloads.");
     };
@@ -1743,12 +2201,57 @@
         if (!next) { announce("That file isn't a saved argument map, so nothing changed."); window.alert("That file isn't a saved argument map, so nothing changed."); return; }
         const had = docRef.current.nodes.length > 0;
         commit(next, "Map opened" + (had ? ". Undo goes back to the map you had." : "."));
+        if (next.passage) setShowPassage(true);
+        setPassEdit(null);
         dropStale(next);
         cancelModes();
         setTimeout(fit, 80);
       };
       reader.readAsText(file);
     };
+    /* A whole new map on the board (from a link or an example). The map it replaces is one Undo away. */
+    const replaceMap = (next, msg) => {
+      const had = docRef.current.nodes.length > 0;
+      commit(next, msg + (had ? " Undo goes back to the map you had." : ""));
+      dropStale(next);
+      cancelModes();
+      setSel(null);
+      setMulti([]);
+      setNotice(had ? msg + " The map you had before is one Undo away." : null);
+      if (next.passage) setShowPassage(true);
+      setPassEdit(null);
+      setTimeout(() => fitTo(1), 80);
+    };
+    useEffect(() => {
+      const m = /^#map=([A-Za-z0-9_-]+)$/.exec(window.location.hash || "");
+      if (!m) return;
+      decodeMap(m[1]).then(next => {
+        try { window.history.replaceState(null, "", window.location.pathname + window.location.search); } catch (err) { /* keep the address */ }
+        if (!next || !next.nodes.length) { setNotice("That link doesn't hold a map this browser can read, so nothing changed."); return; }
+        replaceMap(next, "Map opened from a link.");
+      });
+    }, []);
+    const copyLink = async () => {
+      if (!docRef.current.nodes.length) return;
+      const url = window.location.href.split("#")[0] + "#map=" + await encodeMap(docRef.current);
+      let ok = false;
+      try { await navigator.clipboard.writeText(url); ok = true; } catch (err) { ok = false; }
+      if (!ok) {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = url;
+          ta.style.cssText = "position:fixed;left:-9999px;top:0;";
+          document.body.appendChild(ta);
+          ta.select();
+          ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+        } catch (err) { ok = false; }
+      }
+      if (ok) { setLinkCopied(true); announce("Link copied. Anyone who opens it gets their own copy of this map."); setTimeout(() => setLinkCopied(false), 2000); }
+      else window.prompt("Copy this link to share the map:", url);
+    };
+    const openExample = i => { const ex = EXAMPLES[i]; if (ex) replaceMap(exampleDoc(ex, concTop), "Example opened: " + ex.name + "."); };
+
     const copyOut = async () => {
       if (!an.text) return;
       const ok = await sabCopy(an.text, an.html);
@@ -1829,16 +2332,85 @@
           <button type="button" className="am-tool am-tool--num" onClick=${resetZoom} aria-label=${"Zoom " + zoomPct + " percent. Reset to 100 percent"}>${zoomPct}%</button>
           <button type="button" className="am-tool" onClick=${() => zoomBy(1.2)} aria-label="Zoom in" disabled=${vp.scale >= ZOOM_MAX - 1e-3}><span aria-hidden="true">+</span></button>
           <button type="button" className="am-tool" onClick=${fit} disabled=${!doc.nodes.length}>Fit</button>
+          <button type="button" className="am-tool" onClick=${() => tidy()} disabled=${!doc.nodes.length || !!editing} title="Arrange the map: supports in a row next to the claim they support, objections beside it">Tidy</button>
+          <button type="button" className="am-tool" aria-pressed=${concTop ? "true" : "false"} onClick=${flipConclusion} disabled=${!!editing} title="Where Tidy puts the conclusion: on top with its supports underneath, or at the bottom with its supports above">Conclusion on top</button>
           <button type="button" className="am-tool" aria-pressed=${snap ? "true" : "false"} onClick=${() => setSnap(s => !s)} title="Line claims up on the dot grid">Snap</button>
         </div>
         <div className="am-group" role="group" aria-label="File">
           <button type="button" className="am-tool" onClick=${saveFile} disabled=${!doc.nodes.length}>Save file</button>
           <button type="button" className="am-tool" onClick=${() => fileRef.current && fileRef.current.click()}>Open file</button>
           <button type="button" className="am-tool" onClick=${savePng} disabled=${!doc.nodes.length || exporting}>${exporting ? "Saving…" : "Save PNG"}</button>
+          <button type="button" className="am-tool" onClick=${copyLink} disabled=${!doc.nodes.length} title="Copy a link that opens a copy of this map">${linkCopied ? "Link copied" : "Copy link"}</button>
           <button type="button" className="am-tool" onClick=${() => setConfirm({ kind: "clear" })} disabled=${!doc.nodes.length}>Clear</button>
+        </div>
+        <div className="am-group">
+          <button type="button" className="am-tool" aria-pressed=${showPassage ? "true" : "false"} aria-controls="am-passage" onClick=${() => setShowPassage(v => !v)}
+            title="Work from a passage: paste it, then highlight the parts that are claims">Passage</button>
+          <select className="am-tool am-tool--select" aria-label="Open an example map" value="" disabled=${!!editing}
+            onChange=${ev => { const v = ev.target.value; if (v !== "") openExample(+v); }}>
+            <option value="">Examples…</option>
+            ${EXAMPLES.map((ex, i) => html`<option key=${i} value=${i}>${ex.name}</option>`)}
+          </select>
         </div>
         <input ref=${fileRef} type="file" accept=".json,application/json" onChange=${openFile} hidden />
       </div>
+
+      ${notice && html`<p className="am-notice" role="note"><span>${notice}</span>
+        <button type="button" className="am-btn am-btn--small" onClick=${() => setNotice(null)}>Dismiss</button></p>`}
+
+      ${showPassage && (() => {
+        const passage = doc.passage || "";
+        const editing0 = passEdit != null || !passage;
+        const srcs = doc.nodes.map(n => srcRange(n, passage)).filter(Boolean);
+        const activeId = selNode ? selNode.id : null;
+        const pieces = (a, b) => {
+          const cuts = new Set([a, b]);
+          srcs.forEach(r => { if (r.s > a && r.s < b) cuts.add(r.s); if (r.e > a && r.e < b) cuts.add(r.e); });
+          const pts = Array.from(cuts).sort((x, y) => x - y);
+          return pts.slice(0, -1).map((p0, i) => {
+            const p1 = pts[i + 1], hit = srcs.filter(r => r.s <= p0 && r.e >= p1);
+            if (!hit.length) return passage.slice(p0, p1);
+            const own = hit.find(r => r.id === activeId) || hit[0];
+            const last = own.e === p1;
+            return html`<mark key=${p0} className=${"am-src" + (own.id === activeId ? " is-active" : "")}
+              data-label=${last && an.display[own.id] ? an.display[own.id] : null}
+              onClick=${ev => {
+                const sl = window.getSelection ? window.getSelection() : null;
+                if (ev.detail === 0 || (sl && !sl.isCollapsed)) return;
+                ev.stopPropagation();
+                cancelModes(); setMulti([]); setSel({ type: "node", id: own.id }); ensureVisible(own.id);
+              }}>${passage.slice(p0, p1)}</mark>`;
+          });
+        };
+        return html`<section className="am-panel am-passage" id="am-passage" aria-labelledby="am-pass-h">
+          <h2 className="am-h2" id="am-pass-h">${editing0 ? html`<label htmlFor="am-pass-in">Passage</label>` : "Passage"}</h2>
+          ${editing0
+            ? html`<textarea id="am-pass-in" className="am-textarea" rows="5" placeholder="Paste the passage you are mapping…" aria-describedby="am-pass-note"
+                  value=${passEdit != null ? passEdit : passage} onChange=${ev => setPassEdit(ev.target.value)} />
+                <p className="am-note" id="am-pass-note">The passage stays with your map: it is saved with it and travels in a shared link.</p>
+                <div className="am-row">
+                  <button type="button" className="am-btn am-btn--solid" disabled=${!(passEdit != null ? passEdit : passage).trim() && !passage} onClick=${() => applyPassage(passEdit != null ? passEdit : passage)}>${passage ? "Save passage" : "Use this passage"}</button>
+                  ${passage && html`<button type="button" className="am-btn" onClick=${() => setPassEdit(null)}>Cancel</button>`}
+                </div>`
+            : html`<div className="am-passage-body"><div className="am-passage-text" ref=${passRef}>${splitSentences(passage).map(st => {
+                  const core = trimRange(passage, st.s, st.e);
+                  if (core.e <= core.s) return html`<span key=${st.s}>${passage.slice(st.s, st.e)}</span>`;
+                  const go = () => claimFromRange(core.s, core.e);
+                  return html`<span key=${st.s} className="am-sent" role="button" tabIndex="0"
+                    aria-label=${"Make a claim from this sentence: " + passage.slice(core.s, core.e)}
+                    onKeyDown=${ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } }}
+                    onClick=${ev => { if (ev.detail === 0) go(); }}>${pieces(st.s, st.e)}</span>`;
+                })}</div>
+                <div className="am-passage-side">
+                <p className="am-note">Highlight a sentence, or part of one, then make it a claim. Reword the claim on the board so it stands alone. Shaded words are already claims: click them to find the claim. With the keyboard, Tab to a sentence and press Enter.</p>
+                <div className="am-row">
+                  <button type="button" className="am-btn am-btn--solid" disabled=${!selRange}
+                    onPointerDown=${ev => ev.preventDefault()}
+                    onClick=${() => { if (selRange) claimFromRange(selRange.s, selRange.e); }}>Make a claim from the highlight</button>
+                  <button type="button" className="am-btn" onClick=${() => setPassEdit(passage)}>Edit passage</button>
+                </div></div></div>`}
+        </section>`;
+      })()}
 
       <div className="am-work">
         <div className="am-side">
@@ -1909,6 +2481,12 @@
                   </select>
                   <button type="button" className="am-btn am-btn--wide" disabled=${!newTarget} onClick=${() => { addArrow(newKind, selNode.id, newTarget); setNewTarget(""); }}>Add arrow</button>`}
 
+              <h3 className="am-h3">Add a new claim to this one</h3>
+              <div className="am-row" style=${{ marginTop: "0.4rem" }}>
+                <button type="button" className="am-btn am-btn--small" onClick=${() => addLinked(selNode.id, "supports")}>Add a support</button>
+                <button type="button" className="am-btn am-btn--small am-btn--obj" onClick=${() => addLinked(selNode.id, "objects")}>Add an objection</button>
+              </div>
+
               ${outgoing.length > 0 && html`<h3 className="am-h3">Arrows from this claim</h3><ul className="am-list">${outgoing.map(ed => edgeItem(ed, true))}</ul>`}
               ${incoming.length > 0 && html`<h3 className="am-h3">Arrows into this claim</h3><ul className="am-list">${incoming.map(ed => edgeItem(ed, false))}</ul>`}
 
@@ -1934,11 +2512,15 @@
         </div>
 
         <div className="am-stage">
-          <div className="am-status" aria-hidden="true"><span className="am-mode">${MODE_NAME[mode]}</span><span>${hint()}</span></div>
           <div className=${"am-board" + (panning ? " is-panning" : "") + (picking ? " is-picking" : "") + (link ? " is-dragging-link" : "")} ref=${boardRef} role="region"
             aria-label="Argument map" aria-describedby="am-board-help" tabIndex="-1"
             style=${{ backgroundSize: GRID * vp.scale + "px " + GRID * vp.scale + "px", backgroundPosition: vp.x + "px " + vp.y + "px" }}
-            onPointerDown=${onBoardPointerDown} onClick=${onBoardClick}>
+            onPointerDown=${onBoardPointerDown} onClick=${onBoardClick}
+            onDoubleClick=${ev => {
+              if (mode !== "select" || editing || (ev.target.closest && ev.target.closest(".am-card, .am-edge"))) return;
+              const c = toCanvas(ev.clientX, ev.clientY);
+              newClaimAt(c.x - NODE_W / 2, c.y - 30);
+            }}>
             <p className="am-sr" id="am-board-help">Each claim is a button. Tab moves between claims. Enter edits a claim, the arrow keys move it, Delete removes it. The panel for the selected claim draws arrows. The standard form below the board reads the whole map.</p>
             <div className="am-layer" style=${{ transform: "translate(" + vp.x + "px, " + vp.y + "px) scale(" + vp.scale + ")" }}>
               <svg className="am-svg" aria-hidden="true" focusable="false">
@@ -1969,7 +2551,7 @@
                 const cls = "am-card" + (r === "main" ? " am-card--main" : r === "trib" ? " am-card--trib" : "") + (an.isObj[n.id] ? " am-card--objection" : "")
                   + (isEd ? " is-editing" : isChosen ? " is-chosen" : selected ? " is-selected" : "")
                   + (link && link.over === n.id ? " is-target" + (link.kind === "objects" ? " is-target--objects" : "") : "") + (link && link.src === n.id ? " is-linking" : "");
-                const labCls = "am-card-label" + (an.isObj[n.id] || r === "objection" || r === "reply" ? " am-card-label--objection" : r === "objsupport" ? " am-card-label--plain" : "");
+                const labCls = "am-card-label" + (an.isObj[n.id] || r === "objection" || r === "reply" ? " am-card-label--objection" : r === "objsupport" ? " am-card-label--plain" : r === "main" ? " am-card-label--main" : r === "trib" ? " am-card-label--trib" : "");
                 const ls = an.labels[n.id] || [];
                 const aria = ROLE_WORD[r] + (ls.length ? " " + ls.join(", ") : "") + (an.isObj[n.id] && ls.length ? ", objection" : "") + ": " + n.text
                   + (isChosen ? (source === n.id ? ". Start of the arrow" : ". Chosen to join") : "");
@@ -1983,7 +2565,7 @@
                   onFocus=${ev => { if (ev.target === ev.currentTarget) onCardFocus(ev, n.id); }}>
                   ${lab && html`<span className=${labCls} aria-hidden="true">${lab}</span>`}
                   ${isEd
-                    ? html`<textarea className="am-card-edit" aria-label="Claim text. Enter saves, Escape cancels." value=${editText} autoFocus=${true}
+                    ? html`<textarea className="am-card-edit" aria-label="Claim text. Enter saves, Escape cancels." placeholder="Type a claim…" value=${editText} autoFocus=${true}
                         rows=${Math.max(2, Math.ceil(editText.length / 24))}
                         onChange=${ev => setEditText(ev.target.value)}
                         onKeyDown=${ev => {
@@ -1996,13 +2578,14 @@
                         onClick=${ev => ev.stopPropagation()} />`
                     : html`<span className="am-card-text" aria-hidden="true">${n.text}</span>`}
                   ${!isEd && (mode === "select" || mode === "connect") && html`<span className="am-link-handle" aria-hidden="true"
-                    title="Drag to another claim to draw an arrow. Hold Alt (Option on a Mac) for the other kind."
+                    title="Drag to another claim to draw an arrow, or to empty board to add a new claim. Hold Alt (Option on a Mac) for the other kind."
                     onPointerDown=${ev => onHandlePointerDown(ev, n.id)} />`}
                 </div>`;
               })}
             </div>
-            ${doc.nodes.length === 0 && html`<div className="am-empty" aria-hidden="true">Add a claim to begin.</div>`}
+            ${doc.nodes.length === 0 && html`<div className="am-empty" aria-hidden="true">Add a claim to begin, or double-click the board.</div>`}
           </div>
+          <div className="am-status" aria-hidden="true"><span className="am-mode">${MODE_NAME[mode]}</span><span>${hint()}</span></div>
         </div>
       </div>
 
@@ -2025,14 +2608,16 @@
       <details className="am-help">
         <summary>How the map works</summary>
         <div className="am-help-body">
-          <p><strong>Claims.</strong> Type a claim and add it, then drag it where you want it. Double-click a claim, or select it and press Enter, to change its words.</p>
-          <p><strong>Support arrows</strong> run from a reason to the claim it supports. Choose Supports, then the reason, then the claim it supports.</p>
+          <p><strong>Claims.</strong> Type a claim and add it, or double-click the board and type it right there. Drag a claim where you want it. Double-click a claim, or select it and press Enter, to change its words.</p>
+          <p><strong>Support arrows</strong> run from a reason to the claim it supports. Drag the dot on the reason's top edge onto the claim it supports, or choose Supports, then the reason, then the claim. Let go of the dot over empty board and a new claim appears there, already connected. With a claim selected, Add a support and Add an objection in the side panel do the same from the other end.</p>
           <p><strong>Joint support.</strong> When two or more supports only work together, choose Join supports: they share one arrow under a bracket. In standard form they are separate S lines in the same argument.</p>
           <p><strong>Objections</strong> are dashed arrows. Choose Objects to, then the objection, then the claim it objects to. An objection to an objection is a reply. Objections are listed after the argument.</p>
           <p><strong>Labels</strong> follow the Schematized Argument Builder. Supports are S1, S2, and so on, numbered left to right as they sit on the board. The claim the arrows end at is the conclusion, C. A claim that is supported and also supports another claim is a tributary conclusion, Cd1, Cd2, and so on; its line in the main argument ends in [= Cd1].</p>
           <p><strong>Keyboard.</strong> Tab to a claim. Enter edits it, the arrow keys move it (Shift moves it farther), Delete removes it. The panel for the selected claim draws arrows without a mouse. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> redoes (<kbd>Command</kbd> on a Mac).</p>
-          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
-          <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map.</p>
+          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Tidy arranges the map for you: the conclusion on top, its supports in a row underneath, objections beside the claim they object to. Turn off Conclusion on top and Tidy turns the tree over: supports above, the conclusion at the bottom, the way standard form reads. Undo puts the claims back. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
+          <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map. Copy link puts the whole map into a link: anyone who opens it gets their own copy, and nothing is stored on a server.</p>
+          <p><strong>Working from a passage.</strong> Press Passage and paste the text you are mapping. Highlight a sentence, or part of one, and make it a claim. The words you used stay shaded in the passage and carry the claim's label, so you can see what you have covered. Reword each claim on the board so it stands alone: the shading still shows where it came from. The passage is saved with the map and travels in a shared link.</p>
+          <p><strong>Examples.</strong> The Examples menu opens a finished map, with its passage, to study or change. If you had a map on the board, Undo brings it back.</p>
         </div>
       </details>
 
