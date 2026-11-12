@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="Map an argument on a board: claims as boxes, support arrows from reasons to the claims they back, dashed arrows for objections. The map is written out in standard form as you build it, ready to copy. No sign-in. Your map stays in your browser.">
+<meta name="description" content="Map an argument on a board: claims as boxes, support arrows from reasons to the claims they back, dashed arrows for objections. No sign-in. Your map stays in your browser.">
 <title>Argument Mapper</title>
 <link rel="canonical" href="https://maxwellunlimited.com/argument-mapper.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Maxwell Unlimited">
 <meta property="og:title" content="Argument Mapper">
-<meta property="og:description" content="Map an argument on a board: claims as boxes, support arrows from reasons to the claims they back, dashed arrows for objections. The map is written out in standard form as you build it, ready to copy. No sign-in. Your map stays in your browser.">
+<meta property="og:description" content="Map an argument on a board: claims as boxes, support arrows from reasons to the claims they back, dashed arrows for objections. No sign-in. Your map stays in your browser.">
 <meta property="og:url" content="https://maxwellunlimited.com/argument-mapper.html">
 <meta property="og:image" content="https://maxwellunlimited.com/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -469,29 +469,6 @@
   .am-preview { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-dasharray: 6 4; }
   .am-boxsel { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 3; }
 
-  /* ── standard form ── */
-  .am-output { margin-top: 0.5rem; }
-  .am-section-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 1rem;
-    margin-bottom: 0.75rem;
-  }
-  .am-section-head .am-h2 { margin: 0; }
-  .am-preview-box { padding: 1rem 1.1rem; border: 1px solid var(--edge); background: var(--field); overflow-x: auto; }
-  .am-pre {
-    margin: 0;
-    color: var(--ink);
-    font-family: var(--mono);
-    font-size: 0.86rem;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-  .am-pre--empty { color: var(--graphite); font-family: var(--prose); font-size: 1rem; }
-
   .am-help { margin-top: 0.5rem; border-top: 1px solid var(--line); padding-top: 1rem; }
   .am-help summary {
     cursor: pointer;
@@ -549,7 +526,7 @@
   }
   @media print {
     html, body { background: #fff !important; color: #000 !important; }
-    .am-skip, .am-toolbar, .am-side, .am-status, .am-help, .am-footer, .am-section-head .am-row { display: none !important; }
+    .am-skip, .am-toolbar, .am-side, .am-status, .am-help, .am-footer { display: none !important; }
     .am-work { display: block; }
     .am-stage { border: 0; }
   }
@@ -576,7 +553,7 @@
 
   .am-h2 { color: var(--ink); font-family: var(--display); font-weight: 800; font-size: 0.95rem; letter-spacing: 0.03em; }
   .am-h3 { color: var(--ink); }
-  .am-toolbar, .am-stage, .am-preview-box, .am-passage-text { border: 2px solid var(--ink); }
+  .am-toolbar, .am-stage, .am-passage-text { border: 2px solid var(--ink); }
   .am-tool:hover:enabled { background: var(--gold); color: var(--band-ink); }
   .am-tool[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--paper); }
   .am-tool--objects[aria-pressed="true"] { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
@@ -613,7 +590,7 @@
     <a class="am-homelink" id="am-homelink" href="https://maxwellunlimited.com/workshop.html">← Workshop</a>
     <p class="am-eyebrow">Argument structure · MU-W-001 · Public Beta</p>
     <h1 class="am-title">Argument Mapper</h1>
-    <p class="am-intro">Type each claim and add it to the board, then draw arrows. A support arrow runs from a reason to the claim it supports; a dashed arrow marks an objection. The map is written out in standard form below as you build it.</p>
+    <p class="am-intro">Type each claim and add it to the board, then draw arrows. A support arrow runs from a reason to the claim it supports; a dashed arrow marks an objection.</p>
   </header>
 
   <main class="am-main" id="main">
@@ -640,7 +617,7 @@
   })();
 
   /* Feedback goes to one short form shared by the Workshop tools. The link arrives filled in
-     (prefill_ in the URL) with the tool and the student's map in standard form. */
+     (prefill_ in the URL) with the tool and the student's map written out as text. */
   (function () {
     var form = "https://airtable.com/appxdI0VPvkKlM8u1/pag4PguwP8nUxPA3p/form";
     var aim = function () {
@@ -1469,7 +1446,6 @@
     const [live, setLive] = useState("");
     const [box, setBox] = useState(null);
     const [confirm, setConfirm] = useState(null);
-    const [copied, setCopied] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [newKind, setNewKind] = useState("supports");
     const [newTarget, setNewTarget] = useState("");
@@ -2252,13 +2228,6 @@
     };
     const openExample = i => { const ex = EXAMPLES[i]; if (ex) replaceMap(exampleDoc(ex, concTop), "Example opened: " + ex.name + "."); };
 
-    const copyOut = async () => {
-      if (!an.text) return;
-      const ok = await sabCopy(an.text, an.html);
-      if (ok) { setCopied(true); announce("Copied to clipboard."); setTimeout(() => setCopied(false), 2000); }
-      else announce("Copying didn't work here. Select the text and copy it.");
-    };
-    const downloadTxt = () => { if (an.text) downloadBlob("argument-map.txt", new Blob([an.text + "\n"], { type: "text/plain" })); };
     const savePng = async () => {
       if (!doc.nodes.length || exporting) return;
       setExporting(true);
@@ -2521,7 +2490,7 @@
               const c = toCanvas(ev.clientX, ev.clientY);
               newClaimAt(c.x - NODE_W / 2, c.y - 30);
             }}>
-            <p className="am-sr" id="am-board-help">Each claim is a button. Tab moves between claims. Enter edits a claim, the arrow keys move it, Delete removes it. The panel for the selected claim draws arrows. The standard form below the board reads the whole map.</p>
+            <p className="am-sr" id="am-board-help">Each claim is a button. Tab moves between claims. Enter edits a claim, the arrow keys move it, Delete removes it. The panel for the selected claim draws arrows.</p>
             <div className="am-layer" style=${{ transform: "translate(" + vp.x + "px, " + vp.y + "px) scale(" + vp.scale + ")" }}>
               <svg className="am-svg" aria-hidden="true" focusable="false">
                 ${geoms.map(({ ed, g }) => html`<g key=${ed.id} className=${"am-edge am-edge--" + ed.kind + (selEdge && selEdge.id === ed.id ? " is-selected" : "")} onClick=${ev => onEdgeClick(ev, ed)}>
@@ -2589,32 +2558,18 @@
         </div>
       </div>
 
-      <section className="am-output" aria-labelledby="am-out-h">
-        <div className="am-section-head">
-          <h2 className="am-h2" id="am-out-h">Standard form</h2>
-          <div className="am-row" style=${{ marginTop: 0 }}>
-            <button type="button" className="am-btn am-btn--solid" onClick=${copyOut} disabled=${!an.text}>${copied ? "Copied" : "Copy"}</button>
-            <button type="button" className="am-btn" onClick=${downloadTxt} disabled=${!an.text}>Download .txt</button>
-          </div>
-        </div>
-        <div className="am-preview-box" tabIndex="0" role="region" aria-label="Standard form text">
-          ${an.text
-            ? html`<pre className="am-pre">${an.text}</pre>`
-            : html`<p className="am-pre am-pre--empty">Draw a support arrow and the argument appears here in standard form.</p>`}
-        </div>
-        ${an.notes.map((nt, i) => html`<p key=${i} className=${"am-note" + (nt.warn ? " am-note--warn" : "")}>${nt.text}</p>`)}
-      </section>
+      ${an.notes.filter(nt => nt.warn).map((nt, i) => html`<p key=${i} className="am-note am-note--warn" role="status">${nt.text}</p>`)}
 
       <details className="am-help">
         <summary>How the map works</summary>
         <div className="am-help-body">
           <p><strong>Claims.</strong> Type a claim and add it, or double-click the board and type it right there. Drag a claim where you want it. Double-click a claim, or select it and press Enter, to change its words.</p>
           <p><strong>Support arrows</strong> run from a reason to the claim it supports. Drag the dot on the reason's top edge onto the claim it supports, or choose Supports, then the reason, then the claim. Let go of the dot over empty board and a new claim appears there, already connected. With a claim selected, Add a support and Add an objection in the side panel do the same from the other end.</p>
-          <p><strong>Joint support.</strong> When two or more supports only work together, choose Join supports: they share one arrow under a bracket. In standard form they are separate S lines in the same argument.</p>
-          <p><strong>Objections</strong> are dashed arrows. Choose Objects to, then the objection, then the claim it objects to. An objection to an objection is a reply. Objections are listed after the argument.</p>
-          <p><strong>Labels</strong> follow the Schematized Argument Builder. Supports are S1, S2, and so on, numbered left to right as they sit on the board. The claim the arrows end at is the conclusion, C. A claim that is supported and also supports another claim is a tributary conclusion, Cd1, Cd2, and so on; its line in the main argument ends in [= Cd1].</p>
+          <p><strong>Joint support.</strong> When two or more supports only work together, choose Join supports: they share one arrow under a bracket.</p>
+          <p><strong>Objections</strong> are dashed arrows. Choose Objects to, then the objection, then the claim it objects to. An objection to an objection is a reply.</p>
+          <p><strong>Labels</strong> follow the Schematized Argument Builder. Supports are S1, S2, and so on, numbered left to right as they sit on the board. The claim the arrows end at is the conclusion, C. A claim that is supported and also supports another claim is a tributary conclusion, Cd1, Cd2, and so on.</p>
           <p><strong>Keyboard.</strong> Tab to a claim. Enter edits it, the arrow keys move it (Shift moves it farther), Delete removes it. The panel for the selected claim draws arrows without a mouse. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> redoes (<kbd>Command</kbd> on a Mac).</p>
-          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Tidy arranges the map for you: the conclusion on top, its supports in a row underneath, objections beside the claim they object to. Turn off Conclusion on top and Tidy turns the tree over: supports above, the conclusion at the bottom, the way standard form reads. Undo puts the claims back. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
+          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Tidy arranges the map for you: the conclusion on top, its supports in a row underneath, objections beside the claim they object to. Turn off Conclusion on top and Tidy turns the tree over: supports above, the conclusion at the bottom. Undo puts the claims back. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
           <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map. Copy link puts the whole map into a link: anyone who opens it gets their own copy, and nothing is stored on a server.</p>
           <p><strong>Working from a passage.</strong> Press Passage and paste the text you are mapping. Highlight a sentence, or part of one, and make it a claim. The words you used stay shaded in the passage and carry the claim's label, so you can see what you have covered. Reword each claim on the board so it stands alone: the shading still shows where it came from. The passage is saved with the map and travels in a shared link.</p>
           <p><strong>Examples.</strong> The Examples menu opens a finished map, with its passage, to study or change. If you had a map on the board, Undo brings it back.</p>
