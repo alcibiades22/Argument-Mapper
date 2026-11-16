@@ -211,6 +211,44 @@
   .am-src { background: var(--accent-wash); color: inherit; border-bottom: 1px solid var(--accent); cursor: pointer; }
   .am-src.is-active { border-bottom-width: 3px; background: transparent; outline: 1px solid var(--accent); }
   .am-src[data-label]::after { content: attr(data-label); margin-left: 0.25em; font-family: var(--mono); font-size: 0.62rem; font-weight: 500; vertical-align: super; line-height: 0; }
+  .am-spacer { flex: 1 1 0; }
+  .am-menu { position: relative; display: inline-flex; }
+  .am-caret { font-size: 0.6rem; }
+  .am-menu-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 30;
+    display: grid;
+    min-width: 13.5rem;
+    padding: 0.3rem;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+  }
+  .am-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.6rem;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .am-menu-item--prose { font-family: var(--prose); font-size: 0.95rem; letter-spacing: 0; text-transform: none; }
+  .am-menu-item:hover:enabled { background: var(--gold); color: var(--band-ink); }
+  .am-menu-item:disabled { opacity: 0.45; }
+  .am-menu-item--danger { color: var(--wrong); }
+  .am-menu-item[aria-pressed]::before { content: ""; flex: none; width: 0.9rem; text-align: center; }
+  .am-menu-item[aria-pressed="true"]::before { content: "✓"; }
+  .am-menu-rule { height: 1px; margin: 0.25rem 0.3rem; background: var(--line); }
   .am-tool--num { min-width: 4.4rem; justify-content: center; font-variant-numeric: tabular-nums; }
 
   /* ── workspace ── */
@@ -362,11 +400,16 @@
     pointer-events: none;
   }
 
+  /* Every claim is the same size (the size the longest claim needs), its words centered, its label
+     a small tab in the top-left corner. */
   .am-card {
     position: absolute;
-    width: 224px;
-    min-height: 60px;
-    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 240px;
+    padding: 28px 16px;
+    text-align: center;
     border: 1px solid var(--edge);
     background: var(--field);
     color: var(--ink);
@@ -385,8 +428,10 @@
   .am-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; z-index: 3; }
   /* The label is a small tab. The conclusion's is solid ink, a tributary conclusion's solid navy. */
   .am-card-label {
-    display: table;
-    margin: 0 0 5px;
+    position: absolute;
+    top: 6px;
+    left: 7px;
+    margin: 0;
     padding: 1px 6px;
     background: var(--accent-wash);
     color: var(--accent);
@@ -396,10 +441,10 @@
     line-height: 14px;
     letter-spacing: 0.06em;
   }
-  .am-card-label--main { background: var(--ink); color: var(--paper); }
   .am-card-label--trib { background: var(--accent); color: var(--paper); }
   .am-card-label--objection { background: var(--wrong-wash); color: var(--wrong); }
   .am-card-label--plain { color: var(--graphite); }
+  .am-card-body { width: 100%; }
   .am-card-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
   .am-card-edit {
     display: block;
@@ -412,6 +457,7 @@
     background: transparent;
     color: var(--ink);
     font: inherit;
+    text-align: center;
     overflow: hidden;
   }
   .am-card.is-editing { outline: 2px solid var(--accent); outline-offset: 3px; cursor: text; z-index: 4; }
@@ -450,6 +496,40 @@
   .am-link--objects .am-link-tag { fill: var(--wrong); }
   .am-link-tagbg { fill: var(--paper); pointer-events: none; }
 
+  /* Several claims selected: a dashed bracket over them with a dot. Drag the dot to the claim they
+     support together. */
+  .am-join-handle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    background: var(--paper);
+    cursor: crosshair;
+    touch-action: none;
+    z-index: 6;
+  }
+  .am-join-handle::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+  .am-join-handle::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
+  .am-join-handle:hover, .am-join-handle:focus-visible { background: var(--accent-wash); }
+  .am-join-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .am-join-tag {
+    position: absolute;
+    transform: translateX(-50%);
+    padding: 1px 6px;
+    background: var(--paper);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .am-edge.is-target .am-stroke { stroke: var(--accent); stroke-width: 3.5; stroke-dasharray: none; }
+  .am-edge.is-target .am-head { fill: var(--accent); }
   .am-stroke { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: square; }
   .am-head { fill: var(--ink); }
   .am-edge--objects .am-stroke { stroke: var(--wrong); stroke-dasharray: 7 5; stroke-linecap: butt; }
@@ -519,6 +599,9 @@
   /* On small screens the toolbar buttons sit apart, so a wrapped row never loses its edge. */
   @media (max-width: 600px) {
     .am-group { margin-right: 0.25rem; padding-right: 0.25rem; }
+    .am-spacer { display: none; }
+    .am-menu-panel { right: auto; left: 0; }
+    .am-group:last-of-type .am-menu:last-child .am-menu-panel { left: auto; right: 0; }
     .am-tool { min-height: 2.3rem; padding: 0.35rem 0.5rem; font-size: 0.68rem; letter-spacing: 0.06em; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -575,14 +658,12 @@
   .am-dialog h2 { font-weight: 800; letter-spacing: 0; }
   .am-help summary { color: var(--ink); font-weight: 500; }
 
-  .am-card { padding: 10px 13px; border: 2px solid var(--ink); }
-  .am-card--main { padding: 10px 13px; border-color: var(--accent); background: var(--navy); color: var(--cream); }
+  .am-card { padding: 28px 16px; border: 2px solid var(--ink); }
+  .am-card--main { padding: 28px 16px; }
   .am-card--trib { border-color: var(--accent); }
   .am-card--objection { border-style: dashed; border-color: var(--wrong); }
   .am-card-edit { color: inherit; }
-  .am-card--main .am-card-edit::placeholder { color: inherit; opacity: 0.75; }
   .am-card-label { padding: 0 5px; border: 1px solid var(--ink); background: none; color: var(--ink); }
-  .am-card-label--main { border-color: var(--gold); background: var(--gold); color: var(--band-ink); }
   .am-card-label--trib { border-color: var(--accent); background: var(--accent); color: var(--paper); }
   .am-card-label--objection { border-color: var(--wrong); background: var(--wrong); color: var(--paper); }
   .am-card-label--plain { border-color: var(--graphite); background: none; color: var(--graphite); }
@@ -646,7 +727,8 @@
   var useState = React.useState, useRef = React.useRef, useEffect = React.useEffect, useMemo = React.useMemo;
 
   var STORAGE_KEY = "argumentMapper.v1";
-  var NODE_W = 224, NODE_MIN_H = 60, GROUP_PAD = 14, GRID = 28;
+  var NODE_W = 240, NODE_MIN_H = 112, GROUP_PAD = 14, GRID = 28;
+  var CARD_PAD_Y = 28, CARD_BORDER = 2; // keep in step with .am-card padding and border
   var ZOOM_MIN = 0.25, ZOOM_MAX = 2.5;
   var HEAD_L = 13, HEAD_W = 6;
 
@@ -1074,8 +1156,8 @@
   /* A free spot for a new claim: near the middle of the view, inside it if there is room, below or
      beside the others rather than on top of them. */
   function estH(text) {
-    const lines = String(text).split("\n").reduce((a, par) => a + Math.max(1, Math.ceil(par.length / 22)), 0);
-    return Math.max(NODE_MIN_H, 24 + lines * 23.2);
+    const lines = String(text).split("\n").reduce((a, par) => a + Math.max(1, Math.ceil(par.length / 25)), 0);
+    return Math.max(NODE_MIN_H, CARD_PAD_Y * 2 + CARD_BORDER * 2 + lines * 23.2);
   }
   function findSpot(nodes, cx, cy, getH, view, h) {
     h = h || NODE_MIN_H;
@@ -1270,7 +1352,8 @@
       return { id: "x" + i + "-" + uid(), text: c[0], x: i, y: 0, src: at >= 0 ? { s: at, q: c[1] } : undefined };
     });
     const edges = ex.arrows.map(a => ({ id: uid(), kind: a[0], target: nodes[a[1]].id, sources: a[2].map(i => nodes[i].id) }));
-    const pos = tidyLayout({ nodes, edges }, id => estH(nodes.find(n => n.id === id).text) + 17, top);
+    const H = Math.max(...nodes.map(n => estH(n.text)));
+    const pos = tidyLayout({ nodes, edges }, () => H, top);
     return { nodes: nodes.map(n => Object.assign({}, n, { x: pos[n.id].x + 40, y: pos[n.id].y + 40 })), edges, passage: ex.passage };
   }
 
@@ -1291,7 +1374,7 @@
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const TEXT = '16px "Source Serif 4", Georgia, serif', LABEL = '500 11px "Overpass Mono", monospace';
-    const LH = 23.2, PADX = 13, PADY = 10, LABEL_H = 21, INNER = NODE_W - PADX * 2 - 4;
+    const LH = 23.2, PADX = 16, INNER = NODE_W - PADX * 2 - CARD_BORDER * 2;
     ctx.font = TEXT;
     const wrap = text => {
       const out = [];
@@ -1314,13 +1397,11 @@
       return out;
     };
     const lay = {};
-    doc.nodes.forEach(n => {
-      const lines = wrap(n.text);
-      const lab = an.display[n.id];
-      const border = 2;
-      lay[n.id] = { lines, lab, h: Math.max(NODE_MIN_H, PADY * 2 + border * 2 + (lab ? LABEL_H : 0) + lines.length * LH) };
-    });
-    const getH = id => (lay[id] ? lay[id].h : NODE_MIN_H);
+    doc.nodes.forEach(n => { lay[n.id] = { lines: wrap(n.text), lab: an.display[n.id] }; });
+    // One size for every claim, as on the board.
+    const CH = Math.max(NODE_MIN_H, ...doc.nodes.map(n => CARD_PAD_Y * 2 + CARD_BORDER * 2 + lay[n.id].lines.length * LH));
+    doc.nodes.forEach(n => { lay[n.id].h = CH; });
+    const getH = () => CH;
     const geoms = doc.edges.map(ed => ({ ed, g: edgeGeom(ed, an.byId, getH) })).filter(x => x.g);
     const xs = [], ys = [];
     doc.nodes.forEach(n => { xs.push(n.x, n.x + NODE_W); ys.push(n.y, n.y + getH(n.id)); });
@@ -1368,33 +1449,37 @@
     });
     doc.nodes.forEach(n => {
       const L = lay[n.id], r = an.role[n.id], obj = an.isObj[n.id];
-      const bw = 2, GOLD = "#eeb211";
-      ctx.fillStyle = r === "main" ? NAVY : CARD;
+      const bw = 2;
+      ctx.fillStyle = CARD;
       ctx.fillRect(n.x, n.y, NODE_W, L.h);
       ctx.lineWidth = bw;
-      ctx.strokeStyle = obj ? BRICK : (r === "main" || r === "trib" ? NAVY : INK);
+      ctx.strokeStyle = obj ? BRICK : (r === "trib" ? NAVY : INK);
       ctx.setLineDash(obj ? [5, 3] : []);
       ctx.strokeRect(n.x + bw / 2, n.y + bw / 2, NODE_W - bw, L.h - bw);
       ctx.setLineDash([]);
-      let y = n.y + bw + PADY;
       if (L.lab) {
+        const y = n.y + 6;
         ctx.font = LABEL;
         const objish = obj || r === "objection" || r === "reply";
         // [fill, text, outline]: solid tabs for the conclusion, tributaries and objections; outlined for the rest.
-        const tab = objish ? [BRICK, CARD, BRICK] : r === "objsupport" ? [null, GRAPHITE, GRAPHITE] : r === "main" ? [GOLD, INK, GOLD] : r === "trib" ? [NAVY, CARD, NAVY] : [null, INK, INK];
+        const tab = objish ? [BRICK, CARD, BRICK] : r === "objsupport" ? [null, GRAPHITE, GRAPHITE] : r === "trib" ? [NAVY, CARD, NAVY] : [null, INK, INK];
         const spaced = L.lab.split("").join("\u200a");
         const tw = ctx.measureText(spaced).width + 12;
-        if (tab[0]) { ctx.fillStyle = tab[0]; ctx.fillRect(n.x + bw + PADX, y, tw, 16); }
+        const lx = n.x + 7;
+        if (tab[0]) { ctx.fillStyle = tab[0]; ctx.fillRect(lx, y, tw, 16); }
         ctx.lineWidth = 1;
         ctx.strokeStyle = tab[2];
-        ctx.strokeRect(n.x + bw + PADX + 0.5, y + 0.5, tw - 1, 15);
+        ctx.strokeRect(lx + 0.5, y + 0.5, tw - 1, 15);
         ctx.fillStyle = tab[1];
-        ctx.fillText(spaced, n.x + bw + PADX + 6, y + 12);
-        y += LABEL_H;
+        ctx.fillText(spaced, lx + 6, y + 12);
       }
+      // The words sit in the middle of the card, each line centered.
       ctx.font = TEXT;
-      ctx.fillStyle = r === "main" ? CARD : INK;
-      L.lines.forEach((line, i) => ctx.fillText(line, n.x + bw + PADX, y + 16 + i * LH));
+      ctx.fillStyle = INK;
+      ctx.textAlign = "center";
+      const top0 = n.y + (L.h - L.lines.length * LH) / 2;
+      L.lines.forEach((line, i) => ctx.fillText(line, n.x + NODE_W / 2, top0 + 17 + i * LH));
+      ctx.textAlign = "left";
     });
     await new Promise(resolve => canvas.toBlob(blob => { if (blob) downloadBlob("argument-map.png", blob); resolve(); }, "image/png"));
   }
@@ -1417,6 +1502,32 @@
     <line x1="0" y1="5" x2="13" y2="5" stroke="currentColor" strokeWidth="1.8" strokeDasharray=${props.dashed ? "4 3" : null} />
     <polygon points="13,1.5 20,5 13,8.5" fill="currentColor" /></svg>`;
 
+  /* A toolbar button that opens a short list of more buttons. Escape or a click elsewhere closes it. */
+  function Menu(props) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    useEffect(() => {
+      if (!open) return;
+      const down = ev => { if (ref.current && !ref.current.contains(ev.target)) setOpen(false); };
+      const key = ev => {
+        if (ev.key !== "Escape") return;
+        ev.stopPropagation();
+        setOpen(false);
+        const b = ref.current && ref.current.querySelector(".am-menu-btn");
+        if (b) b.focus();
+      };
+      document.addEventListener("pointerdown", down, true);
+      document.addEventListener("keydown", key, true);
+      return () => { document.removeEventListener("pointerdown", down, true); document.removeEventListener("keydown", key, true); };
+    }, [open]);
+    return html`<div className="am-menu" ref=${ref}>
+      <button type="button" className="am-tool am-menu-btn" aria-expanded=${open ? "true" : "false"} aria-controls=${props.id} disabled=${props.disabled}
+        title=${props.title} onClick=${() => setOpen(o => !o)}>${props.label} <span className="am-caret" aria-hidden="true">▾</span></button>
+      ${open && html`<div className="am-menu-panel" id=${props.id} role="group" aria-label=${props.name}
+        onClick=${ev => { if (ev.target.closest && ev.target.closest("button")) setOpen(false); }}>${props.children}</div>`}
+    </div>`;
+  }
+
   function App() {
     const [doc, setDocState] = useState(() => (SAVED ? SAVED.doc : { nodes: [], edges: [], passage: "" }));
     const docRef = useRef(doc);
@@ -1437,7 +1548,6 @@
     const [mode, setMode] = useState("select");
     const [edgeKind, setEdgeKind] = useState("supports");
     const [source, setSource] = useState(null);
-    const [chosen, setChosen] = useState([]);
     const [sel, setSel] = useState(null);
     const [multi, setMulti] = useState([]);
     const [editing, setEditing] = useState(null);
@@ -1469,11 +1579,9 @@
     const moveStamp = useRef(0), sideEditStart = useRef(null), editClosed = useRef(false);
 
     const an = useMemo(() => analyze(doc), [doc]);
-    const getH = id => {
-      if (heightsRef.current[id]) return heightsRef.current[id];
-      const n = docRef.current.nodes.find(x => x.id === id);
-      return n ? estH(n.text) : NODE_MIN_H;
-    };
+    // Every claim is drawn the same height: the height the wordiest claim needs.
+    const cardHRef = useRef(NODE_MIN_H);
+    const getH = () => cardHRef.current;
     const pendingNew = useRef(null);
     const announce = msg => setLive(m => (m === msg ? msg + " " : msg));
     const snapV = v => (snap ? Math.round(v / GRID) * GRID : Math.round(v));
@@ -1506,7 +1614,6 @@
     const dropStale = d => {
       setSel(s => (s && (s.type === "node" ? d.nodes.some(n => n.id === s.id) : d.edges.some(x => x.id === s.id)) ? s : null));
       setMulti(m => m.filter(id => d.nodes.some(n => n.id === id)));
-      setChosen(c => c.filter(id => d.nodes.some(n => n.id === id)));
       setSource(s => (s && d.nodes.some(n => n.id === s) ? s : null));
     };
     const undo = () => {
@@ -1590,7 +1697,7 @@
       ro.current = new ResizeObserver(entries => setHeights(prev => {
         let next = prev;
         entries.forEach(en => {
-          const id = en.target.getAttribute("data-node"), h = en.target.offsetHeight;
+          const id = en.target.getAttribute("data-body"), h = en.target.offsetHeight + CARD_PAD_Y * 2 + CARD_BORDER * 2;
           if (id && prev[id] !== h) { if (next === prev) next = Object.assign({}, prev); next[id] = h; }
         });
         return next;
@@ -1598,39 +1705,42 @@
     }
     const cardEls = useRef({}), refFns = useRef({});
     const cardRef = id => refFns.current[id] || (refFns.current[id] = el => {
-      const old = cardEls.current[id];
+      if (el) cardEls.current[id] = el; else delete cardEls.current[id];
+    });
+    const bodyEls = useRef({}), bodyFns = useRef({});
+    const bodyRef = id => bodyFns.current[id] || (bodyFns.current[id] = el => {
+      const old = bodyEls.current[id];
       if (old === el) return;
       if (old && ro.current) ro.current.unobserve(old);
-      if (el) { cardEls.current[id] = el; if (ro.current) ro.current.observe(el); }
-      else delete cardEls.current[id];
+      if (el) { bodyEls.current[id] = el; if (ro.current) ro.current.observe(el); }
+      else delete bodyEls.current[id];
     });
     const focusCard = id => requestAnimationFrame(() => { const el = cardEls.current[id]; if (el) el.focus({ preventScroll: true }); });
 
     /* ── modes ── */
-    const MODE_NAME = { select: "Select", connect: edgeKind === "supports" ? "Supports" : "Objects to", join: "Join supports", "join-target": "Join supports", delete: "Delete" };
+    const MODE_NAME = { select: "Select", connect: edgeKind === "supports" ? "Supports" : "Objects to", delete: "Delete" };
     const hint = () => {
       const verb = edgeKind === "supports" ? "supports" : "objects to";
       if (mode === "connect" && !link) return source ? "Now choose the claim it " + verb + "." : "Choose the claim the arrow starts from: the " + (edgeKind === "supports" ? "reason." : "objection.");
-      if (mode === "join") return chosen.length < 2 ? "Choose the supports that work together (" + chosen.length + " chosen)." : chosen.length + " chosen. Choose more, or press Next.";
-      if (mode === "join-target") return "Choose the claim they support together.";
       if (mode === "delete") return "Choose a claim or an arrow to delete.";
-      if (multi.length > 1) return multi.length + " claims selected. Drag one to move them all.";
+      if (link && link.many) return link.over ? "Let go: these claims support it together." : "Drag onto the claim they support together, or let go on empty board to add it.";
       if (link) return link.over ? "Let go to draw the arrow." + (COARSE ? "" : " Alt (Option on a Mac) switches between support and objection.")
-        : "Drag onto the claim it " + (link.kind === "supports" ? "supports" : "objects to") + ", or let go on empty board to add a new claim there.";
+        : link.overEdge ? "Let go to join this claim to that arrow: they will support it together."
+        : "Drag onto the claim it " + (link.kind === "supports" ? "supports" : "objects to") + ", onto a support arrow to join it, or onto empty board for a new claim.";
+      if (multi.length > 1) return multi.length + " claims selected. Drag the dot on their bracket to the claim they support together, or drag a claim to move them all.";
       return COARSE ? "Drag the dot on a claim to another claim to draw an arrow. Drag a claim to move it. Pinch to zoom."
-        : "Double-click the board to add a claim. Drag the dot on a claim's top edge to another claim to draw an arrow. Shift + drag selects several. Ctrl + scroll zooms.";
+        : "Double-click the board to add a claim. Drag a claim's dot to another claim to draw an arrow. Shift + click several supports to join them. Ctrl + scroll zooms.";
     };
     const switchMode = (m, kind) => {
       setMode(m);
       if (kind) setEdgeKind(kind);
-      setSource(null); setChosen([]); setBox(null);
+      setSource(null); setBox(null);
       if (m !== "select") { setSel(null); setMulti([]); }
       const k = kind || edgeKind;
       announce(m === "connect" ? (k === "supports" ? "Supports: choose the reason, then the claim it supports." : "Objects to: choose the objection, then the claim it objects to.")
-        : m === "join" ? "Join supports: choose the supports that work together, then press Next."
         : m === "delete" ? "Delete: choose a claim or an arrow." : "Select.");
     };
-    const cancelModes = () => { setMode("select"); setSource(null); setChosen([]); setBox(null); };
+    const cancelModes = () => { setMode("select"); setSource(null); setBox(null); };
 
     /* ── editing the map ── */
     const placeClaim = (text, src, msg) => {
@@ -1711,7 +1821,7 @@
       if (editing) return;
       const prev = docRef.current;
       const node = { id: uid(), text: "", x: snapV(x), y: snapV(y) };
-      const edges = edge ? prev.edges.concat([{ id: uid(), sources: [edge.from || node.id], target: edge.to || node.id, kind: edge.kind }]) : prev.edges;
+      const edges = edge ? prev.edges.concat([{ id: uid(), sources: edge.many || [edge.from || node.id], target: edge.to || node.id, kind: edge.kind }]) : prev.edges;
       pendingNew.current = { id: node.id, prev, edge: edge || null };
       setDoc({ nodes: prev.nodes.concat([node]), edges });
       cancelModes();
@@ -1852,7 +1962,8 @@
           setDoc(next);
           setSel({ type: "node", id });
           const a = analyze(next), ed = pend.edge;
-          announce(ed ? "Claim added: " + a.ref(ed.from || id) + (ed.kind === "supports" ? " supports " : " objects to ") + a.ref(ed.to || id) + "." : "Claim added to the board.");
+          announce(ed && ed.many ? "Claim added: " + ed.many.map(a.ref).join(" and ") + " support " + a.ref(id) + " together."
+            : ed ? "Claim added: " + a.ref(ed.from || id) + (ed.kind === "supports" ? " supports " : " objects to ") + a.ref(ed.to || id) + "." : "Claim added to the board.");
           focusCard(id);
         } else {
           setDoc(pend.prev);
@@ -1898,23 +2009,21 @@
         else { addArrow(edgeKind, source, id); setSource(null); }
         return;
       }
-      if (mode === "join") {
-        const has = chosen.includes(id);
-        const next = has ? chosen.filter(x => x !== id) : chosen.concat([id]);
-        setChosen(next);
-        announce((has ? "Taken out: " : "Chosen: ") + an.ref(id) + ". " + next.length + " chosen.");
-        return;
-      }
-      if (mode === "join-target") {
-        if (chosen.includes(id)) { announce("Choose a claim that is not one of the joined supports."); return; }
-        joinArrow(chosen, id);
-        setChosen([]);
-        setMode("join");
-        return;
-      }
       if (multi.includes(id) && multi.length > 1) return;
       setMulti([]);
       setSel({ type: "node", id });
+    };
+
+    /* Shift + click (or Shift + Enter) adds a claim to the selection or takes it out. */
+    const shiftPick = useRef(false);
+    const toggleMulti = id => {
+      const base = multi.length ? multi : sel && sel.type === "node" ? [sel.id] : [];
+      const has = base.includes(id);
+      const next = has ? base.filter(x => x !== id) : base.concat([id]);
+      if (next.length > 1) { setMulti(next); setSel(null); }
+      else { setMulti([]); setSel(next.length ? { type: "node", id: next[0] } : null); }
+      announce((has ? "Taken out: " : "Added: ") + an.ref(id) + ". " + next.length + " selected."
+        + (next.length > 1 && !has ? " To join them, choose the claim they support together in the side panel." : ""));
     };
 
     /* ── pointer gestures: drag claims, pan the board, Shift + drag to select, two fingers to pinch ── */
@@ -1952,6 +2061,21 @@
       ev.preventDefault();
       gesture.current = { type: "link", src: id, x0: ev.clientX, y0: ev.clientY, moved: false };
     };
+    /* The dot on the bracket over several selected claims: drag it to the claim they support together. */
+    const onJoinPointerDown = (ev, members, from) => {
+      ev.stopPropagation();
+      suppressClick.current = false;
+      pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pointers.current.size === 2) { startPinch(); return; }
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      ev.preventDefault();
+      gesture.current = { type: "link", src: null, many: members.slice(), from, x0: ev.clientX, y0: ev.clientY, moved: false };
+    };
+    const edgeAt = (x, y) => {
+      const el = document.elementFromPoint(x, y);
+      const g = el && el.closest ? el.closest("[data-edge]") : null;
+      return g ? g.getAttribute("data-edge") : null;
+    };
     const onCardPointerDown = (ev, id) => {
       if (editing === id) return;
       ev.stopPropagation();
@@ -1959,7 +2083,8 @@
       pointers.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       if (pointers.current.size === 2) { startPinch(); return; }
       if (ev.pointerType === "mouse" && ev.button !== 0) return;
-      if (mode !== "select") return;
+      shiftPick.current = ev.shiftKey && mode === "select";
+      if (mode !== "select" || ev.shiftKey) return;
       const c = toCanvas(ev.clientX, ev.clientY);
       const group = multi.includes(id) && multi.length > 1 ? multi : [id];
       const offs = {};
@@ -1998,7 +2123,17 @@
       const c = toCanvas(ev.clientX, ev.clientY);
       if (g.type === "link") {
         const over = claimAt(ev.clientX, ev.clientY);
-        setLink({ src: g.src, x: c.x, y: c.y, over: over && over !== g.src ? over : null, kind: linkKind(ev.altKey) });
+        if (g.many) {
+          setLink({ src: null, many: g.many, from: g.from, x: c.x, y: c.y, over: over && !g.many.includes(over) ? over : null, kind: "supports" });
+          return;
+        }
+        const kind = linkKind(ev.altKey);
+        let overEdge = null;
+        if (!over && kind === "supports") {
+          const eid = edgeAt(ev.clientX, ev.clientY), ed = eid && docRef.current.edges.find(x => x.id === eid);
+          if (ed && ed.kind === "supports" && ed.target !== g.src && !ed.sources.includes(g.src)) overEdge = ed.id;
+        }
+        setLink({ src: g.src, x: c.x, y: c.y, over: over && over !== g.src ? over : null, overEdge, kind });
         return;
       }
       if (g.type === "drag") {
@@ -2022,12 +2157,28 @@
         suppressClick.current = true;
         setLink(null);
         gesture.current = null;
+        if (g.many) {
+          if (!g.moved) { announce("Drag the dot on the bracket onto the claim these support together."); return; }
+          const tgt = claimAt(ev.clientX, ev.clientY);
+          if (tgt && !g.many.includes(tgt)) { joinArrow(g.many, tgt); setMulti([]); return; }
+          const br = boardRef.current ? boardRef.current.getBoundingClientRect() : null;
+          if (!tgt && br && ev.clientX > br.left && ev.clientX < br.right && ev.clientY > br.top && ev.clientY < br.bottom) {
+            const c = toCanvas(ev.clientX, ev.clientY);
+            const spot = findSpot(docRef.current.nodes, c.x - NODE_W / 2, c.y - 30, getH, null, getH());
+            newClaimAt(spot.x, spot.y, { kind: "supports", many: g.many });
+          } else announce("No arrow drawn. Let go over the claim they support together.");
+          return;
+        }
         if (!g.moved) {
           if (mode === "select") { setMulti([]); setSel({ type: "node", id: g.src }); }
           announce("Drag the dot onto another claim to draw an arrow.");
           return;
         }
         const tgt = claimAt(ev.clientX, ev.clientY);
+        if (!tgt && linkKind(ev.altKey) === "supports") {
+          const eid = edgeAt(ev.clientX, ev.clientY), ed = eid && docRef.current.edges.find(x => x.id === eid);
+          if (ed && ed.kind === "supports" && ed.target !== g.src && !ed.sources.includes(g.src)) { addToJoint(ed.id, g.src); return; }
+        }
         if (tgt && tgt !== g.src) { addArrow(linkKind(ev.altKey), g.src, tgt); return; }
         const br = boardRef.current ? boardRef.current.getBoundingClientRect() : null;
         if (!tgt && br && ev.clientX > br.left && ev.clientX < br.right && ev.clientY > br.top && ev.clientY < br.bottom) {
@@ -2065,12 +2216,13 @@
     const onCardClick = (ev, id) => {
       ev.stopPropagation();
       if (suppressClick.current) { suppressClick.current = false; return; }
+      shiftPick.current = false;
+      if (ev.shiftKey && mode === "select") { toggleMulti(id); return; }
       activate(id);
     };
     const onBoardClick = () => {
       if (suppressClick.current) { suppressClick.current = false; return; }
       if (mode === "connect") { if (source) { setSource(null); announce("Start claim cleared."); } return; }
-      if (mode === "join-target") { setMode("join"); return; }
       if (mode !== "select") return;
       setSel(null);
       setMulti([]);
@@ -2091,7 +2243,8 @@
       if (k === "Enter" || k === " ") {
         ev.preventDefault();
         ev.stopPropagation();
-        if (mode === "select" && k === "Enter") startEdit(id); else activate(id);
+        if (mode === "select" && k === "Enter" && ev.shiftKey) toggleMulti(id);
+        else if (mode === "select" && k === "Enter") startEdit(id); else activate(id);
         return;
       }
       if (mode === "select" && (k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown")) {
@@ -2108,6 +2261,7 @@
       }
     };
     const onCardFocus = (ev, id) => {
+      if (shiftPick.current) return; // a Shift + click: the click adds the claim to the selection
       if (mode === "select" && !multi.includes(id) && !(sel && sel.type === "node" && sel.id === id)) setSel({ type: "node", id });
       let keyboard = false;
       try { keyboard = ev.currentTarget.matches(":focus-visible"); } catch (err) { /* older browsers */ }
@@ -2123,7 +2277,7 @@
       if (mod && !inField && (ev.key === "z" || ev.key === "Z")) { ev.preventDefault(); if (ev.shiftKey) redo(); else undo(); return; }
       if (mod && !inField && (ev.key === "y" || ev.key === "Y")) { ev.preventDefault(); redo(); return; }
       if (ev.key === "Escape" && !inField) {
-        if (mode !== "select" || source || chosen.length) { cancelModes(); announce("Select."); }
+        if (mode !== "select" || source) { cancelModes(); announce("Select."); }
         else { setSel(null); setMulti([]); }
         return;
       }
@@ -2254,14 +2408,17 @@
 
     useEffect(() => { setNewTarget(""); }, [sel && sel.id]);
 
+    cardHRef.current = Math.max(NODE_MIN_H, ...doc.nodes.map(n => heights[n.id] || estH(n.text)));
+    const cardH = cardHRef.current;
     const geoms = doc.edges.map(ed => ({ ed, g: edgeGeom(ed, byId, getH) })).filter(x => x.g);
-    const preview = (mode === "join" || mode === "join-target") && chosen.length >= 2 ? groupBox(chosen, byId, getH) : null;
+    // Several claims selected: a dashed bracket over them, with a dot to drag to the claim they support together.
+    const joinBox = mode === "select" && multi.length > 1 && !editing && !(link && !link.many) ? groupBox(multi, byId, getH) : null;
+    const joinAt = joinBox ? { x: joinBox.x + joinBox.w / 2, y: concTop ? joinBox.y : joinBox.y + joinBox.h } : null;
     const linkGeom = (() => {
-      if (!link || !byId[link.src]) return null;
-      const sb = boxOf(byId[link.src], getH(link.src));
+      if (!link || (!link.many && !byId[link.src])) return null;
       const tb = link.over && byId[link.over] ? boxOf(byId[link.over], getH(link.over)) : null;
       const aim = tb ? centerOf(tb) : { x: link.x, y: link.y };
-      const start = edgePoint(sb, aim.x, aim.y, 2);
+      const start = link.many ? link.from : edgePoint(boxOf(byId[link.src], getH(link.src)), aim.x, aim.y, 2);
       const end = tb ? edgePoint(tb, start.x, start.y, 4) : aim;
       const tag = { x: link.x + 14, y: link.y - 10 };
       if (Math.hypot(end.x - start.x, end.y - start.y) < HEAD_L + 2) return { tag };
@@ -2294,37 +2451,38 @@
           ${toolBtn("Select", mode === "select", () => switchMode("select"))}
           ${toolBtn(html`<${Arrow} /> Supports`, mode === "connect" && edgeKind === "supports", () => switchMode("connect", "supports"))}
           ${toolBtn(html`<${Arrow} dashed=${true} /> Objects to`, mode === "connect" && edgeKind === "objects", () => switchMode("connect", "objects"), " am-tool--objects")}
-          ${toolBtn("Join supports", mode === "join" || mode === "join-target", () => switchMode("join"))}
           ${toolBtn("Delete", mode === "delete", () => switchMode("delete"))}
         </div>
-        <div className="am-group" role="group" aria-label="History">
+        <div className="am-group" role="group" aria-label="Edit">
           <button type="button" className="am-tool" onClick=${undo} disabled=${!past.current.length} title="Undo (Ctrl+Z or Command+Z)">Undo</button>
           <button type="button" className="am-tool" onClick=${redo} disabled=${!future.current.length} title="Redo (Ctrl+Shift+Z or Command+Shift+Z)">Redo</button>
+          <button type="button" className="am-tool" onClick=${() => tidy()} disabled=${!doc.nodes.length || !!editing} title="Arrange the map: supports in a row next to the claim they support, objections beside it">Tidy</button>
+          <button type="button" className="am-tool" aria-pressed=${showPassage ? "true" : "false"} aria-controls=${showPassage ? "am-passage" : null} onClick=${() => setShowPassage(v => !v)}
+            title=${doc.passage ? "This map has a passage: the text it was made from" : "Work from a passage: paste it, then highlight the parts that are claims"}>${showPassage ? "Hide passage" : doc.passage ? "Show passage" : "Passage"}</button>
         </div>
-        <div className="am-group" role="group" aria-label="View">
+        <span className="am-spacer" aria-hidden="true"></span>
+        <div className="am-group" role="group" aria-label="Zoom">
           <button type="button" className="am-tool" onClick=${() => zoomBy(1 / 1.2)} aria-label="Zoom out" disabled=${vp.scale <= ZOOM_MIN + 1e-3}><span aria-hidden="true">−</span></button>
           <button type="button" className="am-tool am-tool--num" onClick=${resetZoom} aria-label=${"Zoom " + zoomPct + " percent. Reset to 100 percent"}>${zoomPct}%</button>
           <button type="button" className="am-tool" onClick=${() => zoomBy(1.2)} aria-label="Zoom in" disabled=${vp.scale >= ZOOM_MAX - 1e-3}><span aria-hidden="true">+</span></button>
           <button type="button" className="am-tool" onClick=${fit} disabled=${!doc.nodes.length}>Fit</button>
-          <button type="button" className="am-tool" onClick=${() => tidy()} disabled=${!doc.nodes.length || !!editing} title="Arrange the map: supports in a row next to the claim they support, objections beside it">Tidy</button>
-          <button type="button" className="am-tool" aria-pressed=${concTop ? "true" : "false"} onClick=${flipConclusion} disabled=${!!editing} title="Where Tidy puts the conclusion: on top with its supports underneath, or at the bottom with its supports above">Conclusion on top</button>
-          <button type="button" className="am-tool" aria-pressed=${snap ? "true" : "false"} onClick=${() => setSnap(s => !s)} title="Line claims up on the dot grid">Snap</button>
         </div>
-        <div className="am-group" role="group" aria-label="File">
-          <button type="button" className="am-tool" onClick=${saveFile} disabled=${!doc.nodes.length}>Save file</button>
-          <button type="button" className="am-tool" onClick=${() => fileRef.current && fileRef.current.click()}>Open file</button>
-          <button type="button" className="am-tool" onClick=${savePng} disabled=${!doc.nodes.length || exporting}>${exporting ? "Saving…" : "Save PNG"}</button>
-          <button type="button" className="am-tool" onClick=${copyLink} disabled=${!doc.nodes.length} title="Copy a link that opens a copy of this map">${linkCopied ? "Link copied" : "Copy link"}</button>
-          <button type="button" className="am-tool" onClick=${() => setConfirm({ kind: "clear" })} disabled=${!doc.nodes.length}>Clear</button>
-        </div>
-        <div className="am-group">
-          <button type="button" className="am-tool" aria-pressed=${showPassage ? "true" : "false"} aria-controls="am-passage" onClick=${() => setShowPassage(v => !v)}
-            title=${doc.passage ? "This map has a passage: the text it was made from" : "Work from a passage: paste it, then highlight the parts that are claims"}>${showPassage ? "Hide passage" : doc.passage ? "Show passage" : "Passage"}</button>
-          <select className="am-tool am-tool--select" aria-label="Open an example map" value="" disabled=${!!editing}
-            onChange=${ev => { const v = ev.target.value; if (v !== "") openExample(+v); }}>
-            <option value="">Examples…</option>
-            ${EXAMPLES.map((ex, i) => html`<option key=${i} value=${i}>${ex.name}</option>`)}
-          </select>
+        <div className="am-group" role="group" aria-label="Menus">
+          <${Menu} id="am-menu-view" name="View" label="View" disabled=${!!editing}>
+            <button type="button" className="am-menu-item" aria-pressed=${concTop ? "true" : "false"} onClick=${flipConclusion}>Conclusion on top</button>
+            <button type="button" className="am-menu-item" aria-pressed=${snap ? "true" : "false"} onClick=${() => setSnap(s => !s)}>Snap to grid</button>
+          <//>
+          <${Menu} id="am-menu-ex" name="Examples" label="Examples" disabled=${!!editing}>
+            ${EXAMPLES.map((ex, i) => html`<button type="button" key=${i} className="am-menu-item am-menu-item--prose" onClick=${() => openExample(i)}>${ex.name}</button>`)}
+          <//>
+          <${Menu} id="am-menu-file" name="File" label=${exporting ? "Saving…" : linkCopied ? "Link copied" : "File"}>
+            <button type="button" className="am-menu-item" onClick=${saveFile} disabled=${!doc.nodes.length}>Save file</button>
+            <button type="button" className="am-menu-item" onClick=${() => fileRef.current && fileRef.current.click()}>Open file</button>
+            <button type="button" className="am-menu-item" onClick=${savePng} disabled=${!doc.nodes.length || exporting}>Save PNG</button>
+            <button type="button" className="am-menu-item" onClick=${copyLink} disabled=${!doc.nodes.length}>Copy link</button>
+            <div className="am-menu-rule"></div>
+            <button type="button" className="am-menu-item am-menu-item--danger" onClick=${() => setConfirm({ kind: "clear" })} disabled=${!doc.nodes.length}>Clear board</button>
+          <//>
         </div>
         <input ref=${fileRef} type="file" accept=".json,application/json" onChange=${openFile} hidden />
       </div>
@@ -2410,25 +2568,17 @@
               <div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => switchMode("select")}>Done</button></div>
             </section>`}
 
-            ${(mode === "join" || mode === "join-target") && html`<section className="am-panel" aria-labelledby="am-join-h">
-              <h2 className="am-h2" id="am-join-h">Join supports</h2>
-              <p className="am-note">Supports that only work together share one arrow under a bracket. ${mode === "join" ? "Choose them on the board, then press Next." : "Now choose the claim they support together."}</p>
-              ${chosen.length > 0 && html`<ul className="am-list" style=${{ marginTop: "0.6rem" }}>
-                ${chosen.map(id => html`<li className="am-item" key=${id}><div className="am-item-text">${an.display[id] ? an.display[id] + ": " : ""}${clip(byId[id] ? byId[id].text : "", 60)}</div>
-                  ${mode === "join" && html`<div className="am-row"><button type="button" className="am-btn am-btn--small" onClick=${() => setChosen(c => c.filter(x => x !== id))}>Take out</button></div>`}</li>`)}
-              </ul>`}
-              <div className="am-row">
-                ${mode === "join"
-                  ? html`<button type="button" className="am-btn am-btn--solid am-btn--small" disabled=${chosen.length < 2} onClick=${() => { setMode("join-target"); announce("Now choose the claim they support together."); }}>Next</button>
-                         <button type="button" className="am-btn am-btn--small" disabled=${!chosen.length} onClick=${() => setChosen([])}>Clear</button>`
-                  : html`<button type="button" className="am-btn am-btn--small" onClick=${() => setMode("join")}>Back</button>`}
-                <button type="button" className="am-btn am-btn--small" onClick=${() => switchMode("select")}>Done</button>
-              </div>
-            </section>`}
-
             ${mode === "select" && multi.length > 1 && html`<section className="am-panel" aria-labelledby="am-multi-h">
               <h2 className="am-h2" id="am-multi-h">${multi.length} claims selected</h2>
-              <p className="am-note">Drag any of them to move them all. On the keyboard, the arrow keys move them together.</p>
+              <h3 className="am-h3">Join them as linked support</h3>
+              <p className="am-note">Supports that only work together share one arrow from a bracket. Drag the dot on the bracket to the claim they support together, or choose it here.</p>
+              <select className="am-select" aria-label="The claim they support together" value="" style=${{ marginTop: "0.5rem" }}
+                onChange=${ev => { const v = ev.target.value; if (v) { joinArrow(multi, v); setMulti([]); } }}>
+                <option value="">The claim they support together…</option>
+                ${doc.nodes.filter(n => !multi.includes(n.id)).map(n => html`<option key=${n.id} value=${n.id}>${optionText(n)}</option>`)}
+              </select>
+              <h3 className="am-h3">Move or delete</h3>
+              <p className="am-note">Drag any of them to move them all. On the keyboard, the arrow keys move them together. Shift + click a claim to add it or take it out.</p>
               <div className="am-row"><button type="button" className="am-btn am-btn--danger" onClick=${() => deleteNodes(multi)}>Delete selected</button>
                 <button type="button" className="am-btn" onClick=${() => setMulti([])}>Deselect</button></div>
             </section>`}
@@ -2498,7 +2648,7 @@
             <p className="am-sr" id="am-board-help">Each claim is a button. Tab moves between claims. Enter edits a claim, the arrow keys move it, Delete removes it. The panel for the selected claim draws arrows.</p>
             <div className="am-layer" style=${{ transform: "translate(" + vp.x + "px, " + vp.y + "px) scale(" + vp.scale + ")" }}>
               <svg className="am-svg" aria-hidden="true" focusable="false">
-                ${geoms.map(({ ed, g }) => html`<g key=${ed.id} className=${"am-edge am-edge--" + ed.kind + (selEdge && selEdge.id === ed.id ? " is-selected" : "")} onClick=${ev => onEdgeClick(ev, ed)}>
+                ${geoms.map(({ ed, g }) => html`<g key=${ed.id} data-edge=${ed.id} className=${"am-edge am-edge--" + ed.kind + (selEdge && selEdge.id === ed.id ? " is-selected" : "") + (link && link.overEdge === ed.id ? " is-target" : "")} onClick=${ev => onEdgeClick(ev, ed)}>
                   ${g.bracket && html`<polyline className="am-hit" points=${ptsAttr(g.bracket)} />`}
                   ${g.bracket && html`<polyline className="am-stroke" points=${ptsAttr(g.bracket)} />`}
                   <line className="am-hit" x1=${g.start.x} y1=${g.start.y} x2=${g.base.x} y2=${g.base.y} />
@@ -2507,38 +2657,38 @@
                   ${ed.kind === "objects" && g.len >= 96 && html`<rect className="am-edge-patch" x=${g.mid.x - 38} y=${g.mid.y - 9} width="76" height="18" />`}
                   ${ed.kind === "objects" && g.len >= 96 && html`<text className="am-edge-label" x=${g.mid.x} y=${g.mid.y + 4} textAnchor="middle">objects to</text>`}
                 </g>`)}
-                ${preview && html`<polyline className="am-preview" points=${ptsAttr(bracketPts(preview, true))} />`}
+                ${joinBox && html`<polyline className="am-preview" points=${ptsAttr(bracketPts(joinBox, concTop))} />`}
                 ${box && box.w > 2 && box.h > 2 && html`<rect className="am-boxsel" x=${box.x} y=${box.y} width=${box.w} height=${box.h} />`}
               </svg>
               <svg className="am-svg am-svg--top" aria-hidden="true" focusable="false">
                 ${linkGeom && html`<g className=${"am-link am-link--" + link.kind}>
                   ${linkGeom.start && html`<line className="am-link-line" x1=${linkGeom.start.x} y1=${linkGeom.start.y} x2=${linkGeom.base.x} y2=${linkGeom.base.y} />`}
                   ${linkGeom.head && html`<polygon className="am-link-head" points=${ptsAttr(linkGeom.head)} />`}
-                  <rect className="am-link-tagbg" x=${linkGeom.tag.x - 4} y=${linkGeom.tag.y - 12} width=${link.kind === "supports" ? 70 : 84} height="17" />
-                  <text className="am-link-tag" x=${linkGeom.tag.x} y=${linkGeom.tag.y}>${link.kind === "supports" ? "supports" : "objects to"}</text>
+                  <rect className="am-link-tagbg" x=${linkGeom.tag.x - 4} y=${linkGeom.tag.y - 12} width=${link.many ? 132 : link.overEdge ? 92 : link.kind === "supports" ? 70 : 84} height="17" />
+                  <text className="am-link-tag" x=${linkGeom.tag.x} y=${linkGeom.tag.y}>${link.many ? "support together" : link.overEdge ? "join arrow" : link.kind === "supports" ? "supports" : "objects to"}</text>
                 </g>`}
               </svg>
               ${doc.nodes.map(n => {
                 const r = an.role[n.id], lab = an.display[n.id], isEd = editing === n.id;
                 const selected = (selNode && selNode.id === n.id) || multi.includes(n.id);
-                const isChosen = chosen.includes(n.id) || source === n.id;
+                const isChosen = source === n.id;
                 const cls = "am-card" + (r === "main" ? " am-card--main" : r === "trib" ? " am-card--trib" : "") + (an.isObj[n.id] ? " am-card--objection" : "")
                   + (isEd ? " is-editing" : isChosen ? " is-chosen" : selected ? " is-selected" : "")
                   + (link && link.over === n.id ? " is-target" + (link.kind === "objects" ? " is-target--objects" : "") : "") + (link && link.src === n.id ? " is-linking" : "");
                 const labCls = "am-card-label" + (an.isObj[n.id] || r === "objection" || r === "reply" ? " am-card-label--objection" : r === "objsupport" ? " am-card-label--plain" : r === "main" ? " am-card-label--main" : r === "trib" ? " am-card-label--trib" : "");
                 const ls = an.labels[n.id] || [];
                 const aria = ROLE_WORD[r] + (ls.length ? " " + ls.join(", ") : "") + (an.isObj[n.id] && ls.length ? ", objection" : "") + ": " + n.text
-                  + (isChosen ? (source === n.id ? ". Start of the arrow" : ". Chosen to join") : "");
+                  + (isChosen ? ". Start of the arrow" : "");
                 return html`<div key=${n.id} data-node=${n.id} ref=${cardRef(n.id)} className=${cls}
                   role=${isEd ? "group" : "button"} tabIndex=${isEd ? null : "0"} aria-label=${isEd ? "Editing claim" : aria}
-                  style=${{ left: n.x + "px", top: n.y + "px" }}
+                  style=${{ left: n.x + "px", top: n.y + "px", minHeight: cardH + "px" }}
                   onPointerDown=${ev => onCardPointerDown(ev, n.id)}
                   onClick=${ev => onCardClick(ev, n.id)}
                   onDoubleClick=${ev => { ev.stopPropagation(); if (mode === "select") startEdit(n.id); }}
                   onKeyDown=${ev => onCardKey(ev, n.id)}
                   onFocus=${ev => { if (ev.target === ev.currentTarget) onCardFocus(ev, n.id); }}>
                   ${lab && html`<span className=${labCls} aria-hidden="true">${lab}</span>`}
-                  ${isEd
+                  <div className="am-card-body" data-body=${n.id} ref=${bodyRef(n.id)}>${isEd
                     ? html`<textarea className="am-card-edit" aria-label="Claim text. Enter saves, Escape cancels." placeholder="Type a claim…" value=${editText} autoFocus=${true}
                         rows=${Math.max(2, Math.ceil(editText.length / 24))}
                         onChange=${ev => setEditText(ev.target.value)}
@@ -2550,12 +2700,16 @@
                         onBlur=${() => finishEdit(true)}
                         onPointerDown=${ev => ev.stopPropagation()}
                         onClick=${ev => ev.stopPropagation()} />`
-                    : html`<span className="am-card-text" aria-hidden="true">${n.text}</span>`}
+                    : html`<span className="am-card-text" aria-hidden="true">${n.text}</span>`}</div>
                   ${!isEd && (mode === "select" || mode === "connect") && html`<span className="am-link-handle" aria-hidden="true"
                     title="Drag to another claim to draw an arrow, or to empty board to add a new claim. Hold Alt (Option on a Mac) for the other kind."
                     onPointerDown=${ev => onHandlePointerDown(ev, n.id)} />`}
                 </div>`;
               })}
+              ${joinAt && html`<span className="am-join-handle" aria-hidden="true" style=${{ left: joinAt.x + "px", top: joinAt.y + "px" }}
+                title="Drag to the claim these support together"
+                onPointerDown=${ev => onJoinPointerDown(ev, multi, joinAt)} />
+                <span className="am-join-tag" aria-hidden="true" style=${{ left: joinAt.x + "px", top: (concTop ? joinAt.y - 32 : joinAt.y + 14) + "px" }}>drag to join</span>`}
             </div>
             ${doc.nodes.length === 0 && html`<div className="am-empty" aria-hidden="true">Add a claim to begin, or double-click the board.</div>`}
           </div>
@@ -2570,12 +2724,12 @@
         <div className="am-help-body">
           <p><strong>Claims.</strong> Type a claim and add it, or double-click the board and type it right there. Drag a claim where you want it. Double-click a claim, or select it and press Enter, to change its words.</p>
           <p><strong>Support arrows</strong> run from a reason to the claim it supports. Drag the dot on the reason's top edge onto the claim it supports, or choose Supports, then the reason, then the claim. Let go of the dot over empty board and a new claim appears there, already connected. With a claim selected, Add a support and Add an objection in the side panel do the same from the other end.</p>
-          <p><strong>Joint support.</strong> When two or more supports only work together, choose Join supports: they share one arrow under a bracket.</p>
+          <p><strong>Linked support.</strong> When two or more supports only work together, they share one arrow that leaves a bracket over them. Shift + click each of them (or Shift + drag around them): a bracket with a dot appears. Drag the dot onto the claim they support together. To add one more support to a joint arrow, drag its dot onto that arrow. Without a mouse, select one claim, press Shift + Enter on the others, and choose the claim they support together in the side panel.</p>
           <p><strong>Objections</strong> are dashed arrows. Choose Objects to, then the objection, then the claim it objects to. An objection to an objection is a reply.</p>
           <p><strong>Labels</strong> follow the Schematized Argument Builder. Supports are S1, S2, and so on, numbered left to right as they sit on the board. The claim the arrows end at is the conclusion, C. A claim that is supported and also supports another claim is a tributary conclusion, Cd1, Cd2, and so on.</p>
           <p><strong>Keyboard.</strong> Tab to a claim. Enter edits it, the arrow keys move it (Shift moves it farther), Delete removes it. The panel for the selected claim draws arrows without a mouse. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> redoes (<kbd>Command</kbd> on a Mac).</p>
-          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Tidy arranges the map for you: the conclusion on top, its supports in a row underneath, objections beside the claim they object to. Turn off Conclusion on top and Tidy turns the tree over: supports above, the conclusion at the bottom. Undo puts the claims back. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
-          <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map. Copy link puts the whole map into a link: anyone who opens it gets their own copy, and nothing is stored on a server.</p>
+          <p><strong>Moving around.</strong> Drag the board to look around, or use Fit to see the whole map. Tidy arranges the map for you: the conclusion on top, its supports in a row underneath, objections beside the claim they object to. Turn off Conclusion on top (in the View menu) and Tidy turns the tree over: supports above, the conclusion at the bottom. Undo puts the claims back. Pinch, Ctrl + scroll, or the zoom buttons change the size. Shift + drag on the board selects several claims to move together.</p>
+          <p><strong>Saving.</strong> The map stays in this browser, so it is still here when you come back. The File menu has the rest. Save file keeps a copy you can open on any computer with Open file. Save PNG makes a picture of the whole map. Copy link puts the whole map into a link: anyone who opens it gets their own copy, and nothing is stored on a server.</p>
           <p><strong>Working from a passage.</strong> Press Passage and paste the text you are mapping. Highlight a sentence, or part of one, and make it a claim. The words you used stay shaded in the passage and carry the claim's label, so you can see what you have covered. Reword each claim on the board so it stands alone: the shading still shows where it came from. The passage is saved with the map and travels in a shared link. It stays out of the way until you ask for it: when a map has one, the button reads Show passage.</p>
           <p><strong>Examples.</strong> The Examples menu opens a finished map to study or change. Press Show passage to read the text it was made from. If you had a map on the board, Undo brings it back.</p>
         </div>
